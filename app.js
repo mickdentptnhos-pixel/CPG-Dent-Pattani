@@ -178,3 +178,56 @@ el("backBtn").onclick = () => {
   el("app").style.display = "block";
 };
 el("doPrintBtn").onclick = () => window.print();
+
+/* ===================== Proc Tooltips ===================== */
+const PROC_TOOLTIPS = {
+  emergency: {
+    head: "Emergency (ฉุกเฉิน)",
+    body: `ภาวะเจ็บป่วยที่อาจก่อให้เกิดอันตรายต่อชีวิต และจำเป็นต้องได้รับการรักษาอย่างทันท่วงที ได้แก่:<ul>
+      <li>เลือดออกภายในช่องปากที่ควบคุมไม่ได้</li>
+      <li>การอักเสบติดเชื้อที่ทำให้เนื้อเยื่ออ่อนภายในหรือภายนอกช่องปากบวม จนอาจเป็นอันตรายต่อชีวิต</li>
+      <li>อุบัติเหตุบริเวณใบหน้าที่อาจขัดขวางการหายใจ</li>
+    </ul>`
+  },
+  urgency: {
+    head: "Urgency (เร่งด่วน)",
+    body: `คือภาวะเจ็บป่วยที่ควรได้รับการรักษาโดยไม่ล่าช้า เช่น:<ul>
+      <li><b>อาการปวด:</b> ปวดฟัน, ปวดฟันคุด หรือปวดจากกระดูกเบ้าฟันอักเสบภายหลังถอนฟัน</li>
+      <li><b>การติดเชื้อ:</b> การมีหนองภายในหรือภายนอกช่องปาก</li>
+      <li><b>อุบัติเหตุเกี่ยวกับฟัน:</b> ฟันหัก, ฟันหลุด หรือฟันเคลื่อนจากอุบัติเหตุ</li>
+      <li><b>ปัญหาจากงานที่อยู่ระหว่างรักษา:</b> วัสดุอุดฟันชั่วคราวหลุดระหว่างรักษาคลองรากฟัน, ครอบฟันชั่วคราวหลุด, ฟันเทียมหักหรือทำให้เจ็บ, อุปกรณ์จัดฟันผิดปกติจนเนื้อเยื่ออ่อนบาดเจ็บ</li>
+      <li><b>การเตรียมช่องปากก่อนรักษาทางการแพทย์ที่รอไม่ได้:</b> เช่น ก่อนรักษามะเร็งศีรษะและลำคอ, การผ่าตัดเปลี่ยนอวัยวะ หรือการปลูกถ่ายไขกระดูก</li>
+    </ul>`
+  }
+};
+
+(function setupProcTooltips() {
+  const tooltip = el("procTooltip");
+  const ttHead = tooltip.querySelector(".tt-head");
+  const ttBody = tooltip.querySelector(".tt-body");
+
+  function positionTooltip(chip) {
+    const rect = chip.getBoundingClientRect();
+    tooltip.style.top = (rect.bottom + 8) + "px";
+    tooltip.style.left = rect.left + "px";
+    requestAnimationFrame(() => {
+      const tr = tooltip.getBoundingClientRect();
+      if (tr.right > window.innerWidth - 8)
+        tooltip.style.left = Math.max(8, window.innerWidth - tr.width - 8) + "px";
+      if (tr.bottom > window.innerHeight - 8)
+        tooltip.style.top = (rect.top - tr.height - 8) + "px";
+    });
+  }
+
+  el("procChips").querySelectorAll(".chip").forEach(chip => {
+    const data = PROC_TOOLTIPS[chip.dataset.proc];
+    if (!data) return;
+    chip.addEventListener("mouseenter", () => {
+      ttHead.textContent = data.head;
+      ttBody.innerHTML = data.body;
+      tooltip.classList.add("show");
+      positionTooltip(chip);
+    });
+    chip.addEventListener("mouseleave", () => tooltip.classList.remove("show"));
+  });
+})();
