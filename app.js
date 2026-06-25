@@ -3,11 +3,9 @@ const state = { proc: "", procedure: "", problem: "", answers: {} };
 let pendingFocus = null; 
 const el = (id) => document.getElementById(id);
 
-// ฟังก์ชันหา Label
 const currentProcedures = () => (PROBLEMS[state.problem]?.procedures) || DEFAULT_PROCEDURES;
 const getProcedureLabel = (val) => currentProcedures().find(p => p.value === val)?.label || "-";
 
-// Helper: อัปเดต CSS ของปุ่มที่ถูกเลือก
 const updateActiveChip = (containerId, activeVal, dataKey) => {
   el(containerId).querySelectorAll('.chip').forEach(c => {
     c.classList.toggle('active', c.dataset[dataKey] === activeVal);
@@ -60,7 +58,6 @@ function updateFlow() {
     return;
   }
 
-  // Render Procedure Chips ด้วย Template Literals (สั้นและคลีนกว่าเดิม)
   el("procedureChips").innerHTML = currentProcedures().map(proc => `
     <button class="chip ${state.procedure === proc.value ? 'active' : ''}" type="button" data-procedure="${proc.value}">
       ${proc.dot ? `<span class="dot">${proc.dot}</span>` : ''}
@@ -72,8 +69,7 @@ function updateFlow() {
   state.procedure ? renderDecision() : (el("decisionCard").style.display = "none", el("resultCard").style.display = "none");
 }
 
-/* ===================== Render Decision (ยุบรวมโค้ดให้สั้นลง) ===================== */
-// ฟังก์ชันรับค่าจากปุ่มที่กด (เขียนแทรกใน HTML)
+/* ===================== Render Decision ===================== */
 window.handleAnswer = (id, val, clears) => {
   state.answers[id] = val;
   if (clears) clears.split(',').forEach(k => delete state.answers[k]);
@@ -131,6 +127,54 @@ function renderDecision() {
   }
 }
 
-/* ===================== Evaluate & Print (ก๊อปปี้ของเดิมมาได้เลย) ===================== */
-// นำฟังก์ชัน evaluate(), ฟังก์ชัน printBtn.onclick, backBtn.onclick, doPrintBtn.onclick 
-// และ formatThaiDate ของเดิมมาวางต่อท้ายตรงนี้ได้เลยครับ
+/* ===================== Evaluate & Print ===================== */
+function evaluate() {
+  const p = PROBLEMS[state.problem];
+  el("resultBox").className = "result";
+  el("resultCard").style.display = "none";
+  el("patientCard").style.display = "none";
+
+  if (!p) return;
+  const ctx = { proc: state.proc, procedure: state.procedure, procedureLabel: getProcedureLabel(state.procedure) };
+  const r = p.evaluate(state.answers, ctx);
+  if (!r || !r.status) return;
+
+  const icons = { green: "✅", red: "⛔", amber: "⚠️" };
+  el("resultCard").style.display = "block";
+  el("resultBox").className = "result show " + r.status;
+  el("resultBox").querySelector(".ico").textContent = icons[r.status] || "";
+  el("resultBox").querySelector(".r-head").textContent = r.title;
+  el("resultBox").querySelector(".r-body").textContent = r.message;
+
+  if (r.consultBody) el("patientCard").style.display = "block";
+}
+
+function formatThaiDate(d) {
+  const months = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  return d.getDate() + " " + months[d.getMonth()] + " พ.ศ. " + (d.getFullYear() + 543);
+}
+
+el("printBtn").onclick = () => {
+  el("dName").textContent = el("ptName").value.trim() || "________________________";
+  el("dAge").textContent  = el("ptAge").value.trim()  || "____";
+  el("dHN").textContent   = el("ptHN").value.trim()   || "____________";
+  el("dDate").textContent = formatThaiDate(new Date());
+  el("dProc").textContent = PROC_LABELS[state.proc] || "-";
+  
+  const p = PROBLEMS[state.problem];
+  const htProcLabel = (state.problem === "ht" && state.answers.htProcedure) ? p.HT_PROC_LABEL[state.answers.htProcedure] : null;
+  el("dProcedure").textContent = htProcLabel || getProcedureLabel(state.procedure) || "-";
+
+  const ctx = { proc: state.proc, procedure: state.procedure, procedureLabel: getProcedureLabel(state.procedure) };
+  el("dConsultBody").textContent = p.buildConsult(state.answers, ctx);
+
+  el("app").style.display = "none";
+  el("consultDoc").style.display = "block";
+  window.scrollTo(0, 0);
+};
+
+el("backBtn").onclick = () => {
+  el("consultDoc").style.display = "none";
+  el("app").style.display = "block";
+};
+el("doPrintBtn").onclick = () => window.print();

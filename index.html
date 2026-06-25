@@ -17,13 +17,86 @@
     </div>
   </header>
 
-  </div>
+  <section class="card" id="problemCard">
+    <h2>เลือก Problem List</h2>
+    <div class="chips" id="problemChips">
+      <button class="chip" type="button" data-problem="ht"><span class="dot">🫀</span> ความดันโลหิตสูง</button>
+      <button class="chip" type="button" data-problem="warfarin"><span class="dot">💊</span> Warfarin</button>
+      <button class="chip" type="button" data-problem="aspirin"><span class="dot">💊</span> Aspirin</button>
+    </div>
+  </section>
+
+  <section class="card" id="procCard" style="display:none">
+    <h2>เลือกประเภทหัตถการ (ความเร่งด่วน)</h2>
+    <div class="chips" id="procChips">
+      <button class="chip" type="button" data-proc="emergency"><span class="dot">🚑</span> Emergency</button>
+      <button class="chip" type="button" data-proc="urgency"><span class="dot">⏱️</span> Urgency</button>
+      <button class="chip" type="button" data-proc="elective"><span class="dot">🗓️</span> Elective</button>
+    </div>
+  </section>
+
+  <section class="card" id="procedureCard" style="display:none">
+    <h2>เลือกหัตถการ</h2>
+    <div class="chips stack" id="procedureChips"></div>
+  </section>
+
+  <section class="card" id="decisionCard" style="display:none">
+    <h2>ประเมินเงื่อนไข</h2>
+    <div id="decisionArea"></div>
+  </section>
+
+  <section class="card" id="resultCard" style="display:none">
+    <h2>คำแนะนำ</h2>
+    <div class="result" id="resultBox">
+      <div class="r-title"><span class="ico"></span><span class="r-head"></span></div>
+      <div class="r-body"></div>
+    </div>
+  </section>
+
+  <section class="card" id="patientCard" style="display:none">
+    <h2>ข้อมูลผู้ป่วย (สำหรับใบ Consult)</h2>
+    <div class="grid">
+      <div class="field full"><label>ชื่อ – นามสกุล</label><input type="text" id="ptName" autocomplete="off"></div>
+      <div class="field"><label>อายุ (ปี)</label><input type="number" id="ptAge" autocomplete="off"></div>
+      <div class="field"><label>HN</label><input type="text" id="ptHN" autocomplete="off"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary btn-block" id="printBtn">🖨️ พิมพ์ใบ Consult</button>
+    </div>
+  </section>
+</div>
 
 <div id="consultDoc">
+  <div class="doc-toolbar">
+    <button class="btn btn-ghost" id="backBtn">← กลับไปแก้ไข</button>
+    <button class="btn btn-primary" id="doPrintBtn">🖨️ สั่งพิมพ์</button>
   </div>
+  <div class="a4">
+    <div class="doc-head">
+      <h2>โรงพยาบาลปัตตานี</h2>
+      <p>กลุ่มภารกิจด้านทันตกรรม</p>
+    </div>
+    <div class="doc-title">ใบส่งปรึกษา (CONSULTATION RECORD)</div>
+    <div class="pt-row">
+      <span><b>ชื่อ–สกุล:</b> <span id="dName"></span></span>
+      <span><b>อายุ:</b> <span id="dAge"></span> ปี</span>
+      <span><b>HN:</b> <span id="dHN"></span></span>
+    </div>
+    <div class="pt-row">
+      <span><b>วันที่:</b> <span id="dDate"></span></span>
+      <span><b>ประเภท:</b> <span id="dProc"></span></span>
+    </div>
+    <div class="pt-row">
+      <span><b>หัตถการ:</b> <span id="dProcedure"></span></span>
+    </div>
+    <div class="sec">
+      <div class="sec-h">เรื่องที่ขอปรึกษา</div>
+      <div class="body-txt" id="dConsultBody"></div>
+    </div>
+  </div>
+</div>
 
 <script src="guidelines.js"></script>
 <script src="app.js"></script>
-
 </body>
 </html>
