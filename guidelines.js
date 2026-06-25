@@ -69,12 +69,12 @@ const PROBLEMS = {
         if (g === "3") {
           if (!a.htProcedure) return { status: null };
           if (a.htProcedure === "simple") return { status: "amber", title: "พิจารณาให้การรักษาร่วมกับการ Monitor อย่างใกล้ชิด", message: "คำแนะนำ\n• วัดความดันโลหิตทุก 15 นาทีระหว่างทำหัตถการ\n• พิจารณาใช้ยาชาที่มี adrenaline ไม่เกิน 2 cartridges\n• สังเกตอาการตลอดหัตถการ" };
-          return { status: "red", title: "ส่งปรึกษาอายุรกรรม", message: "ต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและควบคุมความดันก่อนทำหัตถการ", consultBody: true };
+          return { status: "red", title: "ส่งปรึกษาอายุรกรรม", message: "ต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและควบคุมความดันก่อนทำหัตถการ และนัดมารับบริการภายใน 7 วัน", consultBody: true };
         }
         if (g === "4") {
           if (!a.atod) return { status: null };
           if (a.atod === "yes") return { status: "red", title: "ส่งห้องฉุกเฉินทันที (Hypertensive emergency)", message: "งดทำหัตถการ และนำส่งห้องฉุกเฉินทันที" };
-          return { status: "red", title: "ส่งปรึกษาอายุรกรรม", message: "ต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและควบคุมความดันก่อนทำหัตถการ", consultBody: true };
+          return { status: "red", title: "ส่งปรึกษาอายุรกรรม", message: "ต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและควบคุมความดันก่อนทำหัตถการ และนัดมารับบริการภายใน 7 วัน", consultBody: true };
         }
       }
       if (ctx.proc === "elective") {
@@ -99,23 +99,84 @@ const PROBLEMS = {
   /* ---------- Warfarin ---------- */
   warfarin: {
     label: "Warfarin",
-    questions: [
-      { id: "inr", label: "มีผล INR ภายใน 72 ชั่วโมงหรือไม่?", type: "choice", clears: ["inrValue"], options: [ { value: "yes", text: "✅ มีผล INR" }, { value: "no",  text: "❌ ไม่มีผล INR" } ] },
-      { id: "inrValue", label: "ค่าผล INR ล่าสุด", type: "number", placeholder: "เช่น 2.5", showIf: (a) => a.inr === "yes" }
+    procedures: [
+      { value: "noBleed",  dot: "🪥", label: "ไม่มีเลือดออก / เลือดออกน้อยมาก", sub: "เช่น อุดฟัน, รักษาคลองรากฟัน" },
+      { value: "lowBleed", dot: "🦷", label: "เสี่ยงเลือดออกน้อย", sub: "เช่น ขูดหินปูนเหนือเหงือก, ถอนฟัน ≤ 2 ซี่" },
+      { value: "midBleed", dot: "🔪", label: "เสี่ยงเลือดออกปานกลาง", sub: "เช่น ถอนฟัน > 2 ซี่, การผ่าฟันคุด" }
     ],
-    evaluate(a) {
+    questions: [
+      {
+        id: "inr",
+        label: "มีผล INR ภายใน 72 ชั่วโมงหรือไม่?",
+        type: "choice",
+        clears: ["inrValue"],
+        options: [
+          { value: "yes", text: "✅ มีผล INR" },
+          { value: "no",  text: "❌ ไม่มีผล INR" }
+        ],
+        showIf: (a, ctx) => ctx.proc !== "emergency"
+      },
+      {
+        id: "inrValue",
+        label: "ค่าผล INR ล่าสุด",
+        type: "number",
+        placeholder: "เช่น 2.5",
+        showIf: (a, ctx) => ctx.proc !== "emergency" && a.inr === "yes"
+      }
+    ],
+    evaluate(a, ctx) {
+      if (ctx.proc === "emergency") {
+        return {
+          status: "green",
+          title: "ให้การรักษาทันที",
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่หยุดยา Warfarin\n• ห้ามเลือดด้วย local hemostatic agent อย่างเข้มงวด\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกอย่างใกล้ชิดระหว่างและหลังทำหัตถการ"
+        };
+      }
+
       if (!a.inr) return { status: null };
-      if (a.inr === "no") return { status: "red", title: "ต้องส่ง Consult", message: "ไม่มีผล INR ภายใน 72 ชั่วโมง ต้องส่งปรึกษาเพื่อประเมินและตรวจ INR ก่อนทำหัตถการ", consultBody: true };
+
+      if (a.inr === "no") {
+        if (ctx.proc === "urgency") return { status: "red",   title: "ต้องตรวจ INR ก่อนทำหัตถการ", message: "ผู้ป่วยไม่มีผล INR ภายใน 72 ชั่วโมง ให้ส่งตรวจ INR ก่อน แล้วประเมินซ้ำตามผลที่ได้" };
+        if (ctx.proc === "elective") return { status: "amber", title: "แนะนำตรวจ INR ก่อนนัดทำหัตถการ", message: "ผู้ป่วยไม่มีผล INR ภายใน 72 ชั่วโมง แนะนำให้ตรวจ INR ก่อน แล้วนัดทำหัตถการใหม่" };
+      }
+
       const v = a.inrValue;
       if (v === undefined || v === null || v === "") return { status: null };
       const inr = parseFloat(v);
       if (isNaN(inr)) return { status: null };
-      if (inr <= 3.0) return { status: "green", title: "สามารถทำหัตถการได้", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0) สามารถทำหัตถการได้ตามปกติ ห้ามเลือดด้วย Local hemostatic agent" };
-      return { status: "red", title: "ต้องส่ง Consult", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0) ต้องส่งปรึกษาเพื่อประเมินและปรับยาก่อนทำหัตถการ", consultBody: true };
+      if (!ctx.procedure) return { status: null };
+
+      const hemostasisMsg = "• ไม่จำเป็นต้องหยุดยา Warfarin\n• ระมัดระวังการห้ามเลือดระหว่างและหลังทำหัตถการ\n• พิจารณาเย็บแผลปิดหลังทำหัตถการ\n• พิจารณาใช้สารห้ามเลือด เช่น Gelfoam, Surgicel\n• นัดติดตามอาการหลังทำหัตถการ";
+
+      if (ctx.proc === "urgency") {
+        if (inr <= 3.0) {
+          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0)\nสามารถทำหัตถการได้ตามปกติ ไม่จำเป็นต้องหยุดยา Warfarin" };
+          if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0)\nคำแนะนำ\n" + hemostasisMsg };
+          if (ctx.procedure === "midBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0)\nคำแนะนำ\n" + hemostasisMsg };
+        } else {
+          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0)\nหัตถการประเภทนี้ไม่มีเลือดออก สามารถทำได้ตามปกติ" };
+          if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง หรือ ส่ง Consult นัดทำหัตถการใหม่", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0)\nตัวเลือกที่ 1: ให้การรักษาอย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่\n" + hemostasisMsg + "\nตัวเลือกที่ 2: ส่ง Consult และนัดทำหัตถการใหม่ภายใน 2-3 วันทำการ", consultBody: true };
+          if (ctx.procedure === "midBleed") return { status: "red",   title: "ส่ง Consult นัดทำหัตถการใหม่ภายใน 2-3 วันทำการ", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0)\nต้องส่งปรึกษาและนัดทำหัตถการใหม่ภายใน 2-3 วันทำการ", consultBody: true };
+        }
+      }
+
+      if (ctx.proc === "elective") {
+        if (inr <= 3.0) {
+          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0)\nสามารถทำหัตถการได้ตามปกติ ไม่จำเป็นต้องหยุดยา Warfarin" };
+          if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0)\nคำแนะนำ\n" + hemostasisMsg };
+          if (ctx.procedure === "midBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "ผล INR = " + inr.toFixed(1) + " (≤ 3.0)\nคำแนะนำ\n" + hemostasisMsg };
+        } else {
+          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0)\nหัตถการประเภทนี้ไม่มีเลือดออก สามารถทำได้ตามปกติ" };
+          if (ctx.procedure === "lowBleed") return { status: "red",   title: "ส่ง Consult", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0)\nต้องส่งปรึกษาก่อนทำหัตถการ", consultBody: true };
+          if (ctx.procedure === "midBleed") return { status: "red",   title: "ส่ง Consult", message: "ผล INR = " + inr.toFixed(1) + " (> 3.0)\nต้องส่งปรึกษาก่อนทำหัตถการ", consultBody: true };
+        }
+      }
+
+      return { status: null };
     },
     buildConsult(a, ctx) {
-      const inrTxt = (a.inr === "yes" && a.inrValue) ? "ผล INR ล่าสุด = " + parseFloat(a.inrValue).toFixed(1) : "ยังไม่มีผล INR ภายใน 72 ชั่วโมง";
-      return "ผู้ป่วยรับประทานยา Warfarin (" + inrTxt + ") ต้องการทำหัตถการ " + ctx.procedureLabel + " ขอความอนุเคราะห์ประเมินและพิจารณาปรับยา เพื่อให้ทำหัตถการได้อย่างปลอดภัย";
+      const inrTxt = (a.inr === "yes" && a.inrValue) ? "INR ล่าสุด = " + parseFloat(a.inrValue).toFixed(1) : "ยังไม่มีผล INR ภายใน 72 ชั่วโมง";
+      return "ผู้ป่วยรับประทานยา Warfarin (" + inrTxt + ") ต้องการทำหัตถการ " + ctx.procedureLabel + " (ประเภทหัตถการ: " + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์ประเมินและพิจารณาปรับยา เพื่อให้ทำหัตถการได้อย่างปลอดภัย";
     }
   },
 
@@ -181,12 +242,19 @@ const PROBLEMS = {
           title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่",
           message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nคำแนะนำ\n• ไม่จำเป็นต้องหยุดยา\n• พิจารณาเย็บแผลปิดหลังถอนฟัน\n• พิจารณาใช้สารห้ามเลือด เช่น Gelfoam, Surgicel"
         };
-        if (ctx.procedure === "midBleed") return {
-          status: "red",
-          title: "ส่งปรึกษาอายุรกรรม",
-          message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและพิจารณาปรับยาก่อนทำหัตถการ",
-          consultBody: true
-        };
+        if (ctx.procedure === "midBleed") {
+          if (ctx.proc === "elective") return {
+            status: "amber",
+            title: "เลื่อนการรักษาออกไปก่อน",
+            message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nแนะนำเลื่อนหัตถการออกไปก่อน จนกว่าแพทย์จะปรับยาเหลือ 81 มก./วัน หรือ antiplatelet ตัวเดียว\n• ประสานแพทย์ผู้รักษาเพื่อพิจารณาปรับยา\n• นัดทำหัตถการใหม่หลังปรับยาแล้ว"
+          };
+          return {
+            status: "red",
+            title: "ส่งปรึกษาอายุรกรรม และนัดรับบริการภายใน 7 วัน",
+            message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและพิจารณาปรับยาก่อนทำหัตถการ\n• นัดผู้ป่วยมารับบริการภายใน 7 วัน",
+            consultBody: true
+          };
+        }
       }
 
       return { status: null };
