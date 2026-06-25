@@ -1,4 +1,4 @@
-<style>
+
   :root{
     --blue-900:#0b3d70;
     --blue-700:#1565c0;
@@ -170,4 +170,4 @@
     .a4{box-shadow:none;width:auto;min-height:auto;margin:0;padding:14mm 16mm}
     @page{size:A4;margin:0}
   }
-</style>
+
