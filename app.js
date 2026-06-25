@@ -206,28 +206,27 @@ const PROC_TOOLTIPS = {
   const ttHead = tooltip.querySelector(".tt-head");
   const ttBody = tooltip.querySelector(".tt-body");
 
-  function positionTooltip(chip) {
-    const rect = chip.getBoundingClientRect();
-    tooltip.style.top = (rect.bottom + 8) + "px";
-    tooltip.style.left = rect.left + "px";
+  function positionTooltip(mx, my) {
+    const ox = 14, oy = 14;
+    tooltip.style.top  = (my + oy) + "px";
+    tooltip.style.left = (mx + ox) + "px";
     requestAnimationFrame(() => {
       const tr = tooltip.getBoundingClientRect();
-      if (tr.right > window.innerWidth - 8)
-        tooltip.style.left = Math.max(8, window.innerWidth - tr.width - 8) + "px";
-      if (tr.bottom > window.innerHeight - 8)
-        tooltip.style.top = (rect.top - tr.height - 8) + "px";
+      if (tr.right  > window.innerWidth  - 8) tooltip.style.left = (mx - tr.width  - ox) + "px";
+      if (tr.bottom > window.innerHeight - 8) tooltip.style.top  = (my - tr.height - oy) + "px";
     });
   }
 
   el("procChips").querySelectorAll(".chip").forEach(chip => {
     const data = PROC_TOOLTIPS[chip.dataset.proc];
     if (!data) return;
-    chip.addEventListener("mouseenter", () => {
+    chip.addEventListener("mouseenter", (e) => {
       ttHead.textContent = data.head;
       ttBody.innerHTML = data.body;
       tooltip.classList.add("show");
-      positionTooltip(chip);
+      positionTooltip(e.clientX, e.clientY);
     });
+    chip.addEventListener("mousemove", (e) => positionTooltip(e.clientX, e.clientY));
     chip.addEventListener("mouseleave", () => tooltip.classList.remove("show"));
   });
 })();

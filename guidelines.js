@@ -122,15 +122,80 @@ const PROBLEMS = {
   /* ---------- Aspirin ---------- */
   aspirin: {
     label: "Aspirin",
+    procedures: [
+      { value: "noBleed",  dot: "🪥", label: "ไม่มีเลือดออก / เลือดออกน้อยมาก", sub: "เช่น อุดฟัน, รักษาคลองรากฟัน" },
+      { value: "lowBleed", dot: "🦷", label: "เสี่ยงเลือดออกน้อย", sub: "เช่น ขูดหินปูนเหนือเหงือก, ถอนฟัน ≤ 2 ซี่" },
+      { value: "midBleed", dot: "🔪", label: "เสี่ยงเลือดออกปานกลาง", sub: "เช่น ถอนฟัน > 2 ซี่, การผ่าฟันคุด" }
+    ],
     questions: [
-      { id: "dose", label: "ขนาดยา Aspirin", type: "choice", options: [ { value: "low",  text: "≤ 100 มก./วัน" }, { value: "high", text: "> 100 มก./วัน" } ] }
+      {
+        id: "dose",
+        label: "ขนาดยา / ประเภทการใช้ Aspirin",
+        type: "chipChoice",
+        chipStack: true,
+        options: [
+          { value: "low",  text: "Aspirin 81 มก./วัน" },
+          { value: "high", text: "Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy", sub: "เช่น Aspirin + Clopidogrel" }
+        ]
+      }
     ],
     evaluate(a, ctx) {
       if (!a.dose) return { status: null };
-      return { status: "amber", title: "รอกำหนดเงื่อนไข (Aspirin)", message: "ขนาดยา: " + (a.dose === "low" ? "≤ 100 มก./วัน" : "> 100 มก./วัน") + "\n\nยังไม่ได้กำหนดเกณฑ์ตัดสิน โปรดส่ง logic เพื่อให้ระบบประเมินอัตโนมัติ" };
+
+      if (ctx.proc === "emergency") {
+        return {
+          status: "green",
+          title: "ให้การรักษาทันที",
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่หยุดยา\n• ห้ามเลือดด้วย local hemostatic agent\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกหลังทำหัตถการ"
+        };
+      }
+
+      if (!ctx.procedure) return { status: null };
+
+      if (a.dose === "low") {
+        if (ctx.procedure === "noBleed") return {
+          status: "green",
+          title: "ให้การรักษาได้ตามปกติ",
+          message: "ผู้ป่วยรับประทาน Aspirin 81 มก./วัน\nสามารถทำหัตถการได้ตามปกติ ไม่จำเป็นต้องหยุดยา"
+        };
+        if (ctx.procedure === "lowBleed") return {
+          status: "amber",
+          title: "ให้การรักษาได้อย่างระมัดระวัง",
+          message: "ผู้ป่วยรับประทาน Aspirin 81 มก./วัน\nคำแนะนำ\n• ไม่จำเป็นต้องหยุดยา\n• ระมัดระวังการห้ามเลือดระหว่างและหลังทำหัตถการ\n• ใช้ local hemostatic agent เช่น การกัดผ้าก๊อซ"
+        };
+        if (ctx.procedure === "midBleed") return {
+          status: "amber",
+          title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่",
+          message: "ผู้ป่วยรับประทาน Aspirin 81 มก./วัน\nคำแนะนำ\n• ไม่จำเป็นต้องหยุดยา\n• พิจารณาเย็บแผลปิดหลังถอนฟัน\n• พิจารณาใช้สารห้ามเลือด เช่น Gelfoam, Surgicel\n• นัดติดตามอาการหลังทำหัตถการ"
+        };
+      }
+
+      if (a.dose === "high") {
+        if (ctx.procedure === "noBleed") return {
+          status: "green",
+          title: "ให้การรักษาได้ตามปกติ",
+          message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nสามารถทำหัตถการได้ตามปกติ ไม่จำเป็นต้องหยุดยา"
+        };
+        if (ctx.procedure === "lowBleed") return {
+          status: "amber",
+          title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่",
+          message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nคำแนะนำ\n• ไม่จำเป็นต้องหยุดยา\n• พิจารณาเย็บแผลปิดหลังถอนฟัน\n• พิจารณาใช้สารห้ามเลือด เช่น Gelfoam, Surgicel"
+        };
+        if (ctx.procedure === "midBleed") return {
+          status: "red",
+          title: "ส่งปรึกษาอายุรกรรม",
+          message: "ผู้ป่วยรับประทาน Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy\nต้องส่งปรึกษาอายุรกรรมเพื่อประเมินและพิจารณาปรับยาก่อนทำหัตถการ",
+          consultBody: true
+        };
+      }
+
+      return { status: null };
     },
     buildConsult(a, ctx) {
-      return "ผู้ป่วยรับประทานยา Aspirin (" + (a.dose === "low" ? "≤ 100" : "> 100") + " มก./วัน) ต้องการทำหัตถการ " + ctx.procedureLabel + " ขอความอนุเคราะห์ประเมินและพิจารณาก่อนทำหัตถการ";
+      const doseTxt = a.dose === "low"
+        ? "Aspirin 81 มก./วัน"
+        : "Aspirin 325 มก./วัน / Dual antiplatelet therapy";
+      return "ผู้ป่วยรับประทานยา " + doseTxt + " ต้องการทำหัตถการ " + ctx.procedureLabel + " (ประเภทหัตถการ: " + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์ประเมินและพิจารณาปรับยาก่อนทำหัตถการ";
     }
   }
 };
