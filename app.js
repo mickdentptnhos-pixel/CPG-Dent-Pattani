@@ -61,7 +61,7 @@ function updateFlow() {
   el("procedureChips").innerHTML = currentProcedures().map(proc => `
     <button class="chip ${state.procedure === proc.value ? 'active' : ''}" type="button" data-procedure="${proc.value}">
       ${proc.dot ? `<span class="dot">${proc.dot}</span>` : ''}
-      <span>${proc.label} ${proc.sub ? `<span class="sub">${proc.sub}</span>` : ''}</span>
+      <span>${proc.label} ${proc.sub ? (Array.isArray(proc.sub) ? `<ul class="sub-list"><li>${proc.sub.join('</li><li>')}</li></ul>` : `<span class="sub">${proc.sub}</span>`) : ''}</span>
     </button>
   `).join('');
   
