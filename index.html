@@ -23,6 +23,7 @@
       <button class="chip" type="button" data-problem="ht"><span class="dot">🫀</span> ความดันโลหิตสูง</button>
       <button class="chip" type="button" data-problem="warfarin"><span class="dot">💊</span> Warfarin</button>
       <button class="chip" type="button" data-problem="aspirin"><span class="dot">💊</span> Aspirin</button>
+      <button class="chip" type="button" data-problem="doac"><span class="dot">💉</span> DOACs / NOACs</button>
       <button class="chip" type="button" data-problem="ckd"><span class="dot">🫘</span> โรคไตเรื้อรัง (CKD)</button>
     </div>
   </section>
@@ -99,7 +100,17 @@
 
 <div id="procTooltip"><div class="tt-head"></div><div class="tt-body"></div></div>
 
-<script src="guidelines.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script>
+  (function() {
+    var v = Date.now();
+    (function seq(files, i) {
+      if (i >= files.length) return;
+      var s = document.createElement('script');
+      s.src = files[i] + '?v=' + v;
+      s.onload = function() { seq(files, i + 1); };
+      document.body.appendChild(s);
+    })(['guidelines.js', 'app.js'], 0);
+  })();
+</script>
 </body>
 </html>

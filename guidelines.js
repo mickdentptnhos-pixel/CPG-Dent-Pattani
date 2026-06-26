@@ -188,8 +188,8 @@ const PROBLEMS = {
           if (ctx.procedure === "midBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "INR ≤ 3.0\nคำแนะนำ\n" + hemostasisMsg };
         } else {
           if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "INR > 3.0\nหัตถการประเภทนี้ไม่มีเลือดออก สามารถทำได้ตามปกติ" };
-          if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง หรือ ส่ง Consult นัดทำหัตถการใหม่", message: "INR > 3.0\nตัวเลือกที่ 1: ให้การรักษาอย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่\n" + hemostasisMsg + "\nตัวเลือกที่ 2: ส่ง Consult และนัดทำหัตถการใหม่ภายใน 2-3 วันทำการ", consultBody: true };
-          if (ctx.procedure === "midBleed") return { status: "red",   title: "ส่ง Consult นัดทำหัตถการใหม่ภายใน 2-3 วันทำการ", message: "INR > 3.0\nต้องส่งปรึกษาและนัดทำหัตถการใหม่ภายใน 2-3 วันทำการ", consultBody: true };
+          if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง หรือ ส่ง Consult นัดมารับการรักษาภายใน 7 วัน", message: "INR > 3.0\nตัวเลือกที่ 1: ให้การรักษาอย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่\n" + hemostasisMsg + "\nตัวเลือกที่ 2: ส่ง Consult และนัดมารับการรักษาภายใน 7 วัน", consultBody: true };
+          if (ctx.procedure === "midBleed") return { status: "red",   title: "ส่ง Consult นัดมารับการรักษาภายใน 7 วัน", message: "INR > 3.0\nต้องส่งปรึกษาและนัดมารับการรักษาภายใน 7 วัน", consultBody: true };
         }
       }
 
@@ -217,9 +217,39 @@ const PROBLEMS = {
   ckd: {
     label: "โรคไตเรื้อรัง (CKD)",
     procedures: [
-      { value: "noBleed",  dot: "🪥", label: "ไม่มีเลือดออก / เลือดออกน้อยมาก", sub: "เช่น อุดฟัน, รักษาคลองรากฟัน, ขูดหินปูน" },
-      { value: "lowBleed", dot: "🦷", label: "เสี่ยงเลือดออกน้อย", sub: "เช่น ถอนฟัน ≤ 2 ซี่, ขูดหินปูนใต้เหงือก" },
-      { value: "midBleed", dot: "🔪", label: "เสี่ยงเลือดออกปานกลาง", sub: "เช่น ถอนฟัน > 2 ซี่, การผ่าฟันคุด, ผ่าตัดเล็กในช่องปาก" }
+      {
+        value: "noBleed", dot: "🪥",
+        label: "หัตถการที่ไม่น่าจะทำให้เกิดเลือดออก (Unlikely to cause bleeding)",
+        sub: [
+          "การตรวจประเมินสภาพช่องปากและรังสีวินิจฉัย",
+          "การฉีดยาชาเฉพาะที่แบบ Infiltration, Intraligamentary หรือ Nerve block",
+          "การบูรณะฟัน (อุดฟัน) ที่ขอบวัสดุอยู่เหนือขอบเหงือก",
+          "การพิมพ์ปากสำหรับการทำฟันเทียม",
+          "การปรับแต่งเครื่องมือจัดฟัน และการใส่ฟันเทียมถอดได้หรือติดแน่น"
+        ]
+      },
+      {
+        value: "lowBleed", dot: "🦷",
+        label: "หัตถการที่มีความเสี่ยงต่ำ (Low bleeding risk)",
+        sub: [
+          "การถอนฟันแบบปกติ 1–3 ซี่ ที่คาดว่าจะมีแผลขนาดจำกัด (Simple extractions)",
+          "การเจาะระบายหนองภายในช่องปาก (Incision & drainage)",
+          "การขูดหินปูนและเกลารากฟัน (Root surface debridement: RSD)",
+          "การบูรณะฟันที่มีขอบของวัสดุอยู่ใต้ขอบเหงือก",
+          "การตรวจปริทันต์แบบละเอียด (Detailed six-point full periodontal examination)"
+        ]
+      },
+      {
+        value: "midBleed", dot: "🔪",
+        label: "หัตถการที่มีความเสี่ยงสูงขึ้น (Higher bleeding risk)",
+        sub: [
+          "การถอนฟันที่ซับซ้อน หรือถอนฟันติดกันหลายซี่ที่ทำให้เกิดแผลขนาดใหญ่",
+          "หัตถการศัลยกรรมที่มีการเปิดแผ่นเนื้อเยื่อ (Flap raising procedures)",
+          "ศัลยกรรมปริทันต์ (Periodontal surgery) และตัดแต่งขอบเหงือก",
+          "การผ่าตัดเพื่อใส่รากฟันเทียม (Dental implant surgery)",
+          "การตัดชิ้นเนื้อ (Biopsies) การผ่าตัดเพิ่มความยาวของตัวฟัน และศัลยกรรมปลายรากฟัน"
+        ]
+      }
     ],
     questions: [
       {
@@ -251,12 +281,13 @@ const PROBLEMS = {
       },
       {
         id: "hdDay",
-        label: "วันนี้เป็นวันล้างไต (HD) หรือไม่?",
+        label: "ล้างไตครั้งล่าสุดเมื่อไหร่?",
         type: "chipChoice",
-        chipStack: false,
+        chipStack: true,
         options: [
-          { value: "yes", text: "✅ วันนี้เป็นวัน HD / เพิ่งล้างไตมาวันนี้" },
-          { value: "no",  text: "❌ วันนี้ไม่ใช่วัน HD" }
+          { value: "today",     text: "🔄 วันนี้เป็นวัน HD / เพิ่งล้างไตมาวันนี้", sub: "heparin ยังออกฤทธิ์อยู่" },
+          { value: "yesterday", text: "✅ ล้างไตมาเมื่อวาน",                         sub: "เวลาที่เหมาะที่สุด — heparin หมดฤทธิ์แล้ว" },
+          { value: "before",    text: "⏳ ล้างไตมานานกว่า 1 วัน",                    sub: "uremia เพิ่มขึ้น platelet dysfunction มากขึ้น" }
         ],
         showIf: (a, ctx) => ctx.proc !== "emergency" && a.stage === "g5" && a.dialysisType === "hd"
       }
@@ -295,9 +326,9 @@ const PROBLEMS = {
 
       const isHD = stage === "g5" && a.dialysisType === "hd";
       const hdNote = isHD
-        ? (a.hdDay === "yes"
-            ? "\n⚠️ ล้างไตมาวันนี้: heparin ยังออกฤทธิ์ ระวังเลือดออกมากกว่าปกติ"
-            : "\n✅ วันนี้ไม่ใช่วัน HD: เหมาะสำหรับทำหัตถการ")
+        ? ({ today:     "\n⚠️ ล้างไตมาวันนี้: heparin ยังออกฤทธิ์ ระวังเลือดออกมากกว่าปกติ",
+             yesterday: "\n✅ ล้างไตมาเมื่อวาน: เหมาะที่สุดสำหรับทำหัตถการ heparin หมดฤทธิ์แล้ว",
+             before:    "\n⚠️ ล้างไตมานานกว่า 1 วัน: uremia เพิ่มขึ้น platelet dysfunction มากขึ้น" }[a.hdDay] || "")
         : "";
 
       /* G1–G2 */
@@ -350,25 +381,64 @@ const PROBLEMS = {
 
       /* G5 / Dialysis */
       if (stage === "g5") {
+        /* noBleed: รักษาได้เสมอ + note ตาม HD timing */
         if (proc === "noBleed") return {
           status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง",
           message: "คำแนะนำ\n• ปรับขนาดยาทุกตัวตามระดับ eGFR\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg + hdNote
         };
+
+        /* lowBleed */
         if (proc === "lowBleed") {
+          /* ล้างไตมาเมื่อวาน → optimal window → รักษาได้ */
+          if (isHD && a.hdDay === "yesterday") return {
+            status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่",
+            message: "คำแนะนำ\n✅ ล้างไตมาเมื่อวาน: เวลาที่เหมาะที่สุดสำหรับทำหัตถการ\n• heparin หมดฤทธิ์แล้ว · platelet function ดีที่สุดหลัง HD\n" + hemostasisFull + "\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg
+          };
+          /* ล้างไตวันนี้ → heparin active → เลื่อนถ้าทำได้ */
+          if (isHD && a.hdDay === "today") {
+            if (ctx.proc === "urgency") return {
+              status: "amber", title: "ระมัดระวังมาก — heparin ยังออกฤทธิ์ (ถ้าเลื่อนได้ นัดพรุ่งนี้)",
+              message: "คำแนะนำ (Urgency)\n⚠️ ล้างไตมาวันนี้ — heparin ยังออกฤทธิ์ เสี่ยงเลือดออกมากกว่าปกติ\n• ถ้าเลื่อนได้: นัดวันพรุ่งนี้จะดีกว่า\n• ถ้าทำทันที: ใช้ hemostasis เข้มข้นเป็นพิเศษ\n" + hemostasisFull + "\n• ระวัง AV fistula" + drugMsg
+            };
+            return {
+              status: "red", title: "แนะนำเลื่อนนัดเป็นวันพรุ่งนี้ (หลัง HD)",
+              message: "ควรเลื่อนหัตถการไปวันพรุ่งนี้\n• Heparin ยังออกฤทธิ์ เสี่ยงเลือดออกสูง\n• วันพรุ่งนี้: heparin หมดฤทธิ์ + platelet function ดีที่สุด" + drugMsg
+            };
+          }
+          /* HD other / PD / ยังไม่ได้ล้างไต → Urgency รักษาได้, Elective ส่ง Consult */
           if (ctx.proc === "urgency") return {
             status: "amber", title: "ให้การรักษาได้อย่างระมัดระวังมาก (Urgency — ไม่รอ Consult)",
             message: "คำแนะนำ (รักษาได้เลย เนื่องจากเร่งด่วน)\n• Platelet dysfunction มีนัยสำคัญ ห้ามเลือดเข้มข้น\n" + hemostasisFull + "\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg + hdNote
           };
           return {
             status: "red", title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ",
-            message: "ต้องส่งปรึกษาอายุรกรรมก่อนทำหัตถการ\n• ประเมิน platelet function\n• ประสาน HD team เพื่อนัดทำในวันถัดจากวัน HD\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg,
+            message: "ต้องส่งปรึกษาอายุรกรรมก่อนทำหัตถการ\n• ประเมิน platelet function\n" + (isHD ? "• ประสาน HD team เพื่อนัดทำในวันถัดจากวัน HD\n" : "") + "• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg,
             consultBody: true
           };
         }
+
+        /* midBleed */
         if (proc === "midBleed") {
+          /* ล้างไตมาเมื่อวาน → รักษาได้ด้วย full protocol + แจ้งแพทย์ */
+          if (isHD && a.hdDay === "yesterday") return {
+            status: "amber", title: "ให้การรักษาได้อย่างระมัดระวังมาก",
+            message: "คำแนะนำ\n✅ ล้างไตมาเมื่อวาน: เวลาที่เหมาะที่สุดสำหรับทำหัตถการ\n• ใช้ hemostatic protocol เต็มรูปแบบ\n" + hemostasisFull + "\n• แจ้งอายุรแพทย์ที่ดูแลผู้ป่วยให้รับทราบก่อนทำ\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg
+          };
+          /* ล้างไตวันนี้ → ไม่เหมาะ */
+          if (isHD && a.hdDay === "today") {
+            if (ctx.proc === "urgency") return {
+              status: "red", title: "พิจารณาส่ง ER / Consult อายุรกรรม",
+              message: "HD วันนี้ — heparin ยังออกฤทธิ์ ไม่เหมาะสำหรับหัตถการที่มีเลือดออกมาก\n• ถ้าเลื่อนได้: นัดวันพรุ่งนี้ (หลัง HD)\n• ถ้ารอไม่ได้: ส่ง ER เพื่อรักษาร่วมกับอายุรแพทย์" + drugMsg, consultBody: true
+            };
+            return {
+              status: "red", title: "แนะนำเลื่อนนัดเป็นวันพรุ่งนี้ (หลัง HD)",
+              message: "ควรเลื่อนหัตถการไปวันพรุ่งนี้\n• Heparin ยังออกฤทธิ์ ไม่ปลอดภัยสำหรับหัตถการที่มีเลือดออกมาก\n• วันพรุ่งนี้: heparin หมดฤทธิ์ + platelet function ดีที่สุด" + drugMsg
+            };
+          }
+          /* other / PD / ยังไม่ได้ล้างไต → Consult */
           let msg = "ต้องส่งปรึกษาอายุรกรรมก่อนทำหัตถการ\n• อาจต้องทำ dialysis ก่อนเพื่อ optimize platelet function\n• พิจารณา Desmopressin (DDAVP) + Tranexamic acid protocol\n• Hemostatic protocol เต็มรูปแบบ";
-          if (a.dialysisType === "hd") msg += "\n• นัดทำในวันถัดจากวัน HD เท่านั้น (ไม่ใช่วัน HD)";
-          if (ctx.proc === "urgency") msg += "\n• ถ้ารอ Consult ไม่ได้: พิจารณาส่ง ER เพื่อรักษาร่วมกับอายุรแพทย์";
+          if (isHD) msg += "\n• นัดทำในวันถัดจากวัน HD เท่านั้น";
+          if (ctx.proc === "urgency") msg += "\n• ถ้ารอ Consult ไม่ได้: พิจารณาส่ง ER เพื่อรักษาร่วมกับอายุรแพทย์\n• นัดมารับการรักษาภายใน 7 วัน";
           return { status: "red", title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ", message: msg + drugMsg, consultBody: true };
         }
       }
@@ -503,6 +573,155 @@ const PROBLEMS = {
         ? "Aspirin 81 มก./วัน"
         : "Aspirin 325 มก./วัน / Dual antiplatelet therapy";
       return "ผู้ป่วยรับประทานยา " + doseTxt + " ต้องการทำหัตถการ " + ctx.procedureLabel + " (ประเภทหัตถการ: " + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์ประเมินและพิจารณาปรับยาก่อนทำหัตถการ";
+    }
+  },
+
+  /* ---------- DOACs / NOACs ---------- */
+  doac: {
+    label: "DOACs / NOACs",
+    procedures: [
+      { value: "noBleed",  dot: "🪥", label: "ไม่มีเลือดออก / เลือดออกน้อยมาก",     sub: "เช่น อุดฟัน, รักษาคลองรากฟัน" },
+      { value: "lowBleed", dot: "🦷", label: "เสี่ยงเลือดออกน้อย",                   sub: "เช่น ขูดหินปูน, ถอนฟัน 1–3 ซี่, ผ่าระบายหนอง" },
+      { value: "midBleed", dot: "🔪", label: "เสี่ยงเลือดออกสูงขึ้น",                sub: "เช่น ถอนฟัน > 3 ซี่, ผ่าฟันคุด, รากฟันเทียม, ศัลยกรรมปริทันต์" }
+    ],
+    questions: [
+      {
+        id: "drug",
+        label: "ชนิดยา DOACs ที่ผู้ป่วยใช้",
+        type: "chipChoice",
+        chipStack: true,
+        clears: ["renal", "doseTiming"],
+        options: [
+          { value: "dabigatran",  text: "Dabigatran (Pradaxa®)",   sub: "วันละ 2 ครั้ง" },
+          { value: "apixaban",    text: "Apixaban (Eliquis®)",     sub: "วันละ 2 ครั้ง" },
+          { value: "rivaroxaban", text: "Rivaroxaban (Xarelto®)",  sub: "วันละ 1 ครั้ง" },
+          { value: "edoxaban",    text: "Edoxaban (Lixiana®)",     sub: "วันละ 1 ครั้ง" }
+        ],
+        showIf: (a, ctx) => ctx.proc !== "emergency" && ctx.procedure === "midBleed"
+      },
+      {
+        id: "renal",
+        label: "ผู้ป่วยมีประวัติโรคไตเรื้อรัง หรือทราบว่า CrCl < 50 ml/min หรือไม่?",
+        type: "chipChoice",
+        chipStack: false,
+        options: [
+          { value: "yes", text: "⚠️ มี / CrCl < 50 ml/min", sub: "โรคไตเรื้อรัง หรือค่าไตบกพร่อง" },
+          { value: "no",  text: "✅ ไม่มี / ไม่ทราบ" }
+        ],
+        showIf: (a, ctx) => ctx.proc !== "emergency" && a.drug === "dabigatran" && ctx.procedure === "midBleed"
+      },
+      {
+        id: "doseTiming",
+        label: "ผู้ป่วยรับประทานยา DOACs มื้อใด?",
+        type: "chipChoice",
+        chipStack: false,
+        options: [
+          { value: "morning", text: "🌅 มื้อเช้า" },
+          { value: "evening", text: "🌙 มื้อเย็น" }
+        ],
+        showIf: (a, ctx) => ctx.proc !== "emergency" && (a.drug === "rivaroxaban" || a.drug === "edoxaban") && ctx.procedure === "midBleed"
+      }
+    ],
+    evaluate(a, ctx) {
+      if (ctx.proc === "emergency") {
+        return {
+          status: "green",
+          title: "ให้การรักษาทันที",
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันที โดยไม่หยุดยา DOACs\n• ห้ามเลือดด้วย local hemostatic agent อย่างเข้มงวด\n  – ใส่ฟองน้ำห้ามเลือด (Gelfoam® หรือ Surgicel®) ในเบ้าฟัน\n  – เย็บแผลปิดให้แน่น\n  – พิจารณาใช้น้ำยาบ้วนปาก Tranexamic acid 5%\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกอย่างใกล้ชิดระหว่างและหลังทำหัตถการ"
+        };
+      }
+
+      if (!ctx.procedure) return { status: null };
+
+      const hemostasisMsg = "การห้ามเลือดเฉพาะที่\n• ใส่ฟองน้ำห้ามเลือด (Gelfoam® หรือ Surgicel®) ในเบ้าฟัน\n• เย็บแผลปิดหลังทำหัตถการ\n• พิจารณาใช้น้ำยาบ้วนปาก Tranexamic acid 5% วันละ 4 ครั้ง นาน 2–7 วัน\n• นัดติดตามอาการ 1–2 วัน";
+
+      if (ctx.procedure === "noBleed") {
+        return {
+          status: "green",
+          title: "ให้การรักษาได้ตามปกติ ไม่ต้องปรับยา",
+          message: "หัตถการประเภทนี้ไม่มีความเสี่ยงเลือดออกที่มีนัยสำคัญ\nสามารถให้การรักษาได้ตามปกติ ไม่จำเป็นต้องหยุดหรือปรับยา DOACs"
+        };
+      }
+
+      if (ctx.procedure === "lowBleed") {
+        return {
+          status: "amber",
+          title: "ให้การรักษาได้ ไม่ต้องปรับยา DOACs",
+          message: "ไม่จำเป็นต้องหยุดหรือปรับยา DOACs\nคำแนะนำ\n" + hemostasisMsg
+        };
+      }
+
+      if (ctx.procedure === "midBleed") {
+        if (!a.drug) return { status: null };
+
+        if (a.drug === "dabigatran") {
+          if (!a.renal) return { status: null };
+          if (a.renal === "yes") {
+            return {
+              status: "red",
+              title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ",
+              message: "ผู้ป่วยใช้ยา Dabigatran และมีภาวะการทำงานของไตบกพร่อง (CrCl < 50 ml/min)\nยาอาจคั่งในร่างกายนานกว่าปกติ ต้องให้อายุรแพทย์ประเมินและกำหนดแผนการปรับยาก่อนนัดทำหัตถการ",
+              consultBody: true
+            };
+          }
+          return {
+            status: "red",
+            title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ",
+            message: "ผู้ป่วยใช้ยา Dabigatran (วันละ 2 ครั้ง)\nต้องการงดยามื้อเช้าในวันทำหัตถการ แต่ทันตแพทย์ไม่สามารถสั่งปรับยาเองได้\nกรุณาส่งปรึกษาแพทย์ผู้ดูแลเพื่อขออนุมัติก่อน\n\nแผนที่จะขอความเห็นชอบ\n• งดยา Dabigatran มื้อเช้าวันทำหัตถการ\n• นัดทำหัตถการตอนเช้า\n• รับประทานยามื้อเย็นตามปกติหลังเลือดหยุดสนิทแล้วอย่างน้อย 4 ชั่วโมง\n  (ไม่ต้องรับประทานมื้อเช้าที่ข้ามไปชดเชย)",
+            consultBody: true
+          };
+        }
+
+        if (a.drug === "apixaban") {
+          return {
+            status: "red",
+            title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ",
+            message: "ผู้ป่วยใช้ยา Apixaban (วันละ 2 ครั้ง)\nต้องการงดยามื้อเช้าในวันทำหัตถการ แต่ทันตแพทย์ไม่สามารถสั่งปรับยาเองได้\nกรุณาส่งปรึกษาแพทย์ผู้ดูแลเพื่อขออนุมัติก่อน\n\nแผนที่จะขอความเห็นชอบ\n• งดยา Apixaban มื้อเช้าวันทำหัตถการ\n• นัดทำหัตถการตอนเช้า\n• รับประทานยามื้อเย็นตามปกติหลังเลือดหยุดสนิทแล้วอย่างน้อย 4 ชั่วโมง\n  (ไม่ต้องรับประทานมื้อเช้าที่ข้ามไปชดเชย)",
+            consultBody: true
+          };
+        }
+
+        if (a.drug === "rivaroxaban" || a.drug === "edoxaban") {
+          if (!a.doseTiming) return { status: null };
+          const drugName = a.drug === "rivaroxaban" ? "Rivaroxaban" : "Edoxaban";
+          if (a.doseTiming === "morning") {
+            return {
+              status: "red",
+              title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ",
+              message: "ผู้ป่วยใช้ยา " + drugName + " (วันละ 1 ครั้ง มื้อเช้า)\nต้องการเลื่อนยามื้อเช้าออกไปหลังทำหัตถการ แต่ทันตแพทย์ไม่สามารถสั่งปรับยาเองได้\nกรุณาส่งปรึกษาแพทย์ผู้ดูแลเพื่อขออนุมัติก่อน\n\nแผนที่จะขอความเห็นชอบ\n• เลื่อนยา " + drugName + " มื้อเช้าออกไปก่อน\n• นัดทำหัตถการตอนเช้า\n• รับประทานยามื้อนั้นหลังเลือดหยุดสนิทแล้วอย่างน้อย 4 ชั่วโมง",
+              consultBody: true
+            };
+          }
+          return {
+            status: "amber",
+            title: "ไม่ต้องปรับยา " + drugName + " นัดทำหัตถการตอนเช้า",
+            message: "ผู้ป่วยใช้ยา " + drugName + " (วันละ 1 ครั้ง มื้อเย็น)\nไม่จำเป็นต้องปรับเปลี่ยนตารางยาใดๆ\nคำแนะนำ\n• นัดทำหัตถการตอนเช้า ซึ่งเป็นช่วงที่ระดับยาในเลือดต่ำสุด (Trough level)\n• ให้ผู้ป่วยรับประทานยามื้อเย็นตามปกติ\n" + hemostasisMsg
+          };
+        }
+      }
+
+      return { status: null };
+    },
+    buildConsult(a, ctx) {
+      const drugNames = {
+        dabigatran:  "Dabigatran (Pradaxa®)",
+        apixaban:    "Apixaban (Eliquis®)",
+        rivaroxaban: "Rivaroxaban (Xarelto®)",
+        edoxaban:    "Edoxaban (Lixiana®)"
+      };
+      const drugTxt = drugNames[a.drug] || "DOACs";
+
+      if (a.drug === "dabigatran" && a.renal === "yes") {
+        return "ผู้ป่วยรับประทานยา " + drugTxt + " และมีภาวะการทำงานของไตบกพร่อง (CrCl < 50 ml/min) ต้องการทำหัตถการ " + ctx.procedureLabel + " (" + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์ประเมินและให้คำแนะนำการบริหารยาก่อนนัดทำหัตถการ";
+      }
+
+      const isBD = a.drug === "dabigatran" || a.drug === "apixaban";
+      if (isBD) {
+        return "ผู้ป่วยรับประทานยา " + drugTxt + " (วันละ 2 ครั้ง) ต้องการทำหัตถการ " + ctx.procedureLabel + " (" + PROC_LABELS[ctx.proc] + ") ซึ่งมีความเสี่ยงเลือดออกสูงขึ้น ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์พิจารณาอนุมัติการงดยามื้อเช้าในวันทำหัตถการ และให้กลับมารับประทานยามื้อเย็นหลังเลือดหยุดสนิทแล้วอย่างน้อย 4 ชั่วโมง";
+      }
+
+      const drugName = a.drug === "rivaroxaban" ? "Rivaroxaban" : "Edoxaban";
+      return "ผู้ป่วยรับประทานยา " + drugTxt + " (วันละ 1 ครั้ง มื้อเช้า) ต้องการทำหัตถการ " + ctx.procedureLabel + " (" + PROC_LABELS[ctx.proc] + ") ซึ่งมีความเสี่ยงเลือดออกสูงขึ้น ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์พิจารณาอนุมัติการเลื่อนยา " + drugName + " มื้อเช้าออกไปรับประทานหลังเลือดหยุดสนิทแล้วอย่างน้อย 4 ชั่วโมง";
     }
   }
 };
