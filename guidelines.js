@@ -7,12 +7,91 @@ const PROC_LABELS = {
   elective:  "Elective (นัดล่วงหน้า)"
 };
 
-/* ตัวเลือกหัตถการเริ่มต้น */
-const DEFAULT_PROCEDURES = [
-  { value: "minor", dot: "🪥", label: "หัตถการเจ็บน้อย เลือดออกน้อย ผู้ป่วยกลัวต่ำ", sub: "เช่น อุดฟัน, ขูดหินปูน" },
-  { value: "ext2",  dot: "🦷", label: "ถอนฟันไม่เกิน 2 ซี่" },
-  { value: "surg",  dot: "🔪", label: "ถอนฟันมากกว่า 2 ซี่ / ผ่าตัดเล็กในช่องปาก" }
-];
+/* คำอธิบายความเร่งด่วน — แสดงเป็น tooltip เมื่อชี้ที่ตัวเลือก */
+const PROC_TOOLTIPS = {
+  emergency: {
+    head: "Emergency (ฉุกเฉิน)",
+    body: `ภาวะเจ็บป่วยที่อาจก่อให้เกิดอันตรายต่อชีวิต และจำเป็นต้องได้รับการรักษาอย่างทันท่วงที ได้แก่:<ul>
+      <li>เลือดออกภายในช่องปากที่ควบคุมไม่ได้</li>
+      <li>การอักเสบติดเชื้อที่ทำให้เนื้อเยื่ออ่อนภายในหรือภายนอกช่องปากบวม จนอาจเป็นอันตรายต่อชีวิต</li>
+      <li>อุบัติเหตุบริเวณใบหน้าที่อาจขัดขวางการหายใจ</li>
+    </ul>`
+  },
+  urgency: {
+    head: "Urgency (เร่งด่วน)",
+    body: `คือภาวะเจ็บป่วยที่ควรได้รับการรักษาโดยไม่ล่าช้า เช่น:<ul>
+      <li><b>อาการปวด:</b> ปวดฟัน, ปวดฟันคุด หรือปวดจากกระดูกเบ้าฟันอักเสบภายหลังถอนฟัน</li>
+      <li><b>การติดเชื้อ:</b> การมีหนองภายในหรือภายนอกช่องปาก</li>
+      <li><b>อุบัติเหตุเกี่ยวกับฟัน:</b> ฟันหัก, ฟันหลุด หรือฟันเคลื่อนจากอุบัติเหตุ</li>
+      <li><b>ปัญหาจากงานที่อยู่ระหว่างรักษา:</b> วัสดุอุดฟันชั่วคราวหลุดระหว่างรักษาคลองรากฟัน, ครอบฟันชั่วคราวหลุด, ฟันเทียมหักหรือทำให้เจ็บ, อุปกรณ์จัดฟันผิดปกติจนเนื้อเยื่ออ่อนบาดเจ็บ</li>
+      <li><b>การเตรียมช่องปากก่อนรักษาทางการแพทย์ที่รอไม่ได้:</b> เช่น ก่อนรักษามะเร็งศีรษะและลำคอ, การผ่าตัดเปลี่ยนอวัยวะ หรือการปลูกถ่ายไขกระดูก</li>
+    </ul>`
+  }
+};
+
+/* =====================================================================
+   คำถามที่ใช้ร่วมกันหลาย Problem
+   — แต่ละ Problem เรียงลำดับคำถามเองใน questions[] จะใส่หรือไม่ใส่
+     คำถามเหล่านี้ก็ได้ และจะวางไว้ตำแหน่งใดก็ได้
+   ===================================================================== */
+
+/* คำถามความเร่งด่วนของหัตถการ */
+const PROC_QUESTION = {
+  id: "proc",
+  label: "เลือกความเร่งด่วนของหัตถการ",
+  type: "chipChoice",
+  clears: "*",              /* เปลี่ยนความเร่งด่วน → ล้างคำตอบอื่นทั้งหมด */
+  tooltips: PROC_TOOLTIPS,
+  options: [
+    { value: "emergency", dot: "🚑", text: "Emergency" },
+    { value: "urgency",   dot: "⏱️", text: "Urgency" },
+    { value: "elective",  dot: "🗓️", text: "Elective" }
+  ]
+};
+
+/* คำถามเลือกหัตถการตามความเสี่ยงเลือดออก (Warfarin / CKD / Aspirin / DOACs) */
+const BLEED_PROCEDURE_QUESTION = {
+  id: "procedure",
+  label: "เลือกหัตถการ",
+  type: "chipChoice",
+  chipStack: true,
+  showIf: (a) => a.proc && a.proc !== "emergency",
+  options: [
+    {
+      value: "noBleed", dot: "🪥",
+      text: "หัตถการที่ไม่น่าจะทำให้เกิดเลือดออก (Unlikely to cause bleeding)",
+      sub: [
+        "การตรวจประเมินสภาพช่องปากและรังสีวินิจฉัย",
+        "การฉีดยาชาเฉพาะที่แบบ Infiltration, Intraligamentary หรือ Nerve block",
+        "การบูรณะฟัน (อุดฟัน) ที่ขอบวัสดุอยู่เหนือขอบเหงือก",
+        "การพิมพ์ปากสำหรับการทำฟันเทียม",
+        "การปรับแต่งเครื่องมือจัดฟัน และการใส่ฟันเทียมถอดได้หรือติดแน่น"
+      ]
+    },
+    {
+      value: "lowBleed", dot: "🦷",
+      text: "หัตถการที่มีความเสี่ยงต่ำ (Low bleeding risk)",
+      sub: [
+        "การถอนฟันแบบปกติ 1–3 ซี่ ที่คาดว่าจะมีแผลขนาดจำกัด (Simple extractions)",
+        "การเจาะระบายหนองภายในช่องปาก (Incision & drainage)",
+        "การขูดหินปูนและเกลารากฟัน (Root surface debridement: RSD)",
+        "การบูรณะฟันที่มีขอบของวัสดุอยู่ใต้ขอบเหงือก",
+        "การตรวจปริทันต์แบบละเอียด (Detailed six-point full periodontal examination)"
+      ]
+    },
+    {
+      value: "midBleed", dot: "🔪",
+      text: "หัตถการที่มีความเสี่ยงสูงขึ้น (Higher bleeding risk)",
+      sub: [
+        "การถอนฟันที่ซับซ้อน หรือถอนฟันติดกันหลายซี่ที่ทำให้เกิดแผลขนาดใหญ่",
+        "หัตถการศัลยกรรมที่มีการเปิดแผ่นเนื้อเยื่อ (Flap raising procedures)",
+        "ศัลยกรรมปริทันต์ (Periodontal surgery) และตัดแต่งขอบเหงือก",
+        "การผ่าตัดเพื่อใส่รากฟันเทียม (Dental implant surgery)",
+        "การตัดชิ้นเนื้อ (Biopsies) การผ่าตัดเพิ่มความยาวของตัวฟัน และศัลยกรรมปลายรากฟัน"
+      ]
+    }
+  ]
+};
 
 /* =====================================================================
    โครงสร้าง Problem List
@@ -21,15 +100,12 @@ const PROBLEMS = {
   /* ---------- ความดันโลหิตสูง ---------- */
   ht: {
     label: "ความดันโลหิตสูง",
-    procedures: [
-      { value: "simple",  dot: "🪥", label: "หัตถการไม่ซับซ้อน เจ็บน้อย ผู้ป่วยกลัวต่ำ" },
-      { value: "painful", dot: "⚡", label: "หัตถการที่มีความเจ็บปวด ผู้ป่วยกลัวมาก" }
-    ],
     HT_PROC_LABEL: {
       simple:  "หัตถการไม่ซับซ้อน เจ็บน้อย ผู้ป่วยมีความกลัวต่ำ",
       painful: "หัตถการที่มีความเจ็บปวด ผู้ป่วยมีความกลัวมาก"
     },
     questions: [
+      PROC_QUESTION,
       {
         id: "group", label: "ระดับความดันโลหิต", type: "chipChoice", chipStack: false, clears: ["htProcedure", "atod"],
         options: [
@@ -59,7 +135,7 @@ const PROBLEMS = {
     ],
     evaluate(a, ctx) {
       if (ctx.proc === "emergency") {
-        return { status: "green", title: "ให้การรักษาทันที", message: "คำแนะนำ\n• วัดความดันโลหิตทุก 15 นาทีระหว่างทำหัตถการ\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการตลอดหัตถการ เช่น ปวดหัวรุนแรง แน่นหน้าอก ตามัว แขนขาอ่อนแรง\n• หรือ พิจารณาให้การรักษาที่ห้องฉุกเฉินหรือห้องผ่าตัด" };
+        return { status: "green", title: "ให้การรักษาทันที", message: "คำแนะนำ\n• วัดความดันโลหิตทุก 15 นาทีระหว่างทำหัตถการ\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการตลอดหัตถการ เช่น ปวดหัวรุนแรง แน่นหน้าอก ตามัว แขนขาอ่อนแรง\n• พิจารณาให้การรักษาที่ห้องฉุกเฉินหรือห้องผ่าตัด และพิจารณา Admit เป็นผู้ป่วยใน" };
       }
       if (ctx.proc === "urgency") {
         const g = a.group;
@@ -99,42 +175,9 @@ const PROBLEMS = {
   /* ---------- Warfarin ---------- */
   warfarin: {
     label: "Warfarin",
-    procedures: [
-      {
-        value: "noBleed", dot: "🪥",
-        label: "หัตถการที่ไม่น่าจะทำให้เกิดเลือดออก (Unlikely to cause bleeding)",
-        sub: [
-          "การตรวจประเมินสภาพช่องปากและรังสีวินิจฉัย",
-          "การฉีดยาชาเฉพาะที่แบบ Infiltration, Intraligamentary หรือ Nerve block",
-          "การบูรณะฟัน (อุดฟัน) ที่ขอบวัสดุอยู่เหนือขอบเหงือก",
-          "การพิมพ์ปากสำหรับการทำฟันเทียม",
-          "การปรับแต่งเครื่องมือจัดฟัน และการใส่ฟันเทียมถอดได้หรือติดแน่น"
-        ]
-      },
-      {
-        value: "lowBleed", dot: "🦷",
-        label: "หัตถการที่มีความเสี่ยงต่ำ (Low bleeding risk)",
-        sub: [
-          "การถอนฟันแบบปกติ 1–3 ซี่ ที่คาดว่าจะมีแผลขนาดจำกัด (Simple extractions)",
-          "การเจาะระบายหนองภายในช่องปาก (Incision & drainage)",
-          "การขูดหินปูนและเกลารากฟัน (Root surface debridement: RSD)",
-          "การบูรณะฟันที่มีขอบของวัสดุอยู่ใต้ขอบเหงือก",
-          "การตรวจปริทันต์แบบละเอียด (Detailed six-point full periodontal examination)"
-        ]
-      },
-      {
-        value: "midBleed", dot: "🔪",
-        label: "หัตถการที่มีความเสี่ยงสูงขึ้น (Higher bleeding risk)",
-        sub: [
-          "การถอนฟันที่ซับซ้อน หรือถอนฟันติดกันหลายซี่ที่ทำให้เกิดแผลขนาดใหญ่",
-          "หัตถการศัลยกรรมที่มีการเปิดแผ่นเนื้อเยื่อ (Flap raising procedures)",
-          "ศัลยกรรมปริทันต์ (Periodontal surgery) และตัดแต่งขอบเหงือก",
-          "การผ่าตัดเพื่อใส่รากฟันเทียม (Dental implant surgery)",
-          "การตัดชิ้นเนื้อ (Biopsies) การผ่าตัดเพิ่มความยาวของตัวฟัน และศัลยกรรมปลายรากฟัน"
-        ]
-      }
-    ],
     questions: [
+      PROC_QUESTION,
+      BLEED_PROCEDURE_QUESTION,
       {
         id: "inr",
         label: "มีผล INR ภายใน 72 ชั่วโมงหรือไม่?",
@@ -144,7 +187,7 @@ const PROBLEMS = {
           { value: "yes", text: "✅ มีผล INR" },
           { value: "no",  text: "❌ ไม่มีผล INR" }
         ],
-        showIf: (a, ctx) => ctx.proc !== "emergency"
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure
       },
       {
         id: "inrLevel",
@@ -155,7 +198,7 @@ const PROBLEMS = {
           { value: "leq3", text: "INR ≤ 3.0" },
           { value: "gt3",  text: "INR > 3.0" }
         ],
-        showIf: (a, ctx) => ctx.proc !== "emergency" && a.inr === "yes"
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure && a.inr === "yes"
       }
     ],
     evaluate(a, ctx) {
@@ -163,7 +206,7 @@ const PROBLEMS = {
         return {
           status: "green",
           title: "ให้การรักษาทันที",
-          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่หยุดยา Warfarin\n• ห้ามเลือดด้วย local hemostatic agent อย่างเข้มงวด\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกอย่างใกล้ชิดระหว่างและหลังทำหัตถการ"
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่หยุดยา Warfarin\n• ห้ามเลือดด้วย local hemostatic agent อย่างเข้มงวด\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกอย่างใกล้ชิดระหว่างและหลังทำหัตถการ\n• พิจารณาให้การรักษาที่ห้องฉุกเฉินหรือห้องผ่าตัด และพิจารณา Admit เป็นผู้ป่วยใน"
         };
       }
 
@@ -216,42 +259,9 @@ const PROBLEMS = {
   /* ---------- โรคไตเรื้อรัง (CKD) ---------- */
   ckd: {
     label: "โรคไตเรื้อรัง (CKD)",
-    procedures: [
-      {
-        value: "noBleed", dot: "🪥",
-        label: "หัตถการที่ไม่น่าจะทำให้เกิดเลือดออก (Unlikely to cause bleeding)",
-        sub: [
-          "การตรวจประเมินสภาพช่องปากและรังสีวินิจฉัย",
-          "การฉีดยาชาเฉพาะที่แบบ Infiltration, Intraligamentary หรือ Nerve block",
-          "การบูรณะฟัน (อุดฟัน) ที่ขอบวัสดุอยู่เหนือขอบเหงือก",
-          "การพิมพ์ปากสำหรับการทำฟันเทียม",
-          "การปรับแต่งเครื่องมือจัดฟัน และการใส่ฟันเทียมถอดได้หรือติดแน่น"
-        ]
-      },
-      {
-        value: "lowBleed", dot: "🦷",
-        label: "หัตถการที่มีความเสี่ยงต่ำ (Low bleeding risk)",
-        sub: [
-          "การถอนฟันแบบปกติ 1–3 ซี่ ที่คาดว่าจะมีแผลขนาดจำกัด (Simple extractions)",
-          "การเจาะระบายหนองภายในช่องปาก (Incision & drainage)",
-          "การขูดหินปูนและเกลารากฟัน (Root surface debridement: RSD)",
-          "การบูรณะฟันที่มีขอบของวัสดุอยู่ใต้ขอบเหงือก",
-          "การตรวจปริทันต์แบบละเอียด (Detailed six-point full periodontal examination)"
-        ]
-      },
-      {
-        value: "midBleed", dot: "🔪",
-        label: "หัตถการที่มีความเสี่ยงสูงขึ้น (Higher bleeding risk)",
-        sub: [
-          "การถอนฟันที่ซับซ้อน หรือถอนฟันติดกันหลายซี่ที่ทำให้เกิดแผลขนาดใหญ่",
-          "หัตถการศัลยกรรมที่มีการเปิดแผ่นเนื้อเยื่อ (Flap raising procedures)",
-          "ศัลยกรรมปริทันต์ (Periodontal surgery) และตัดแต่งขอบเหงือก",
-          "การผ่าตัดเพื่อใส่รากฟันเทียม (Dental implant surgery)",
-          "การตัดชิ้นเนื้อ (Biopsies) การผ่าตัดเพิ่มความยาวของตัวฟัน และศัลยกรรมปลายรากฟัน"
-        ]
-      }
-    ],
     questions: [
+      PROC_QUESTION,
+      BLEED_PROCEDURE_QUESTION,
       {
         id: "stage",
         label: "ระดับการทำงานของไต (CKD Stage)",
@@ -264,7 +274,7 @@ const PROBLEMS = {
           { value: "g4",  text: "G4 · eGFR 15–29 mL/min",         sub: "ลดลงมาก" },
           { value: "g5",  text: "G5 / ล้างไต · eGFR < 15 mL/min", sub: "ไตวาย · Hemodialysis · Peritoneal dialysis" }
         ],
-        showIf: (a, ctx) => ctx.proc !== "emergency"
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure
       },
       {
         id: "dialysisType",
@@ -277,7 +287,7 @@ const PROBLEMS = {
           { value: "pd",   text: "🟡 Peritoneal Dialysis (PD)" },
           { value: "none", text: "❌ ยังไม่ได้ล้างไต" }
         ],
-        showIf: (a, ctx) => ctx.proc !== "emergency" && a.stage === "g5"
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure && a.stage === "g5"
       },
       {
         id: "hdDay",
@@ -285,11 +295,10 @@ const PROBLEMS = {
         type: "chipChoice",
         chipStack: true,
         options: [
-          { value: "today",     text: "🔄 วันนี้เป็นวัน HD / เพิ่งล้างไตมาวันนี้", sub: "heparin ยังออกฤทธิ์อยู่" },
-          { value: "yesterday", text: "✅ ล้างไตมาเมื่อวาน",                         sub: "เวลาที่เหมาะที่สุด — heparin หมดฤทธิ์แล้ว" },
-          { value: "before",    text: "⏳ ล้างไตมานานกว่า 1 วัน",                    sub: "uremia เพิ่มขึ้น platelet dysfunction มากขึ้น" }
+          { value: "yesterday", text: "✅ ล้างไตมาเมื่อวาน",       sub: "เวลาที่เหมาะที่สุด — heparin หมดฤทธิ์แล้ว" },
+          { value: "other",     text: "⏳ วันอื่น (วันนี้ หรือนานกว่า 1 วันแล้ว)", sub: "แนะนำเลื่อนมาวันหลังจากล้างไต 1 วัน" }
         ],
-        showIf: (a, ctx) => ctx.proc !== "emergency" && a.stage === "g5" && a.dialysisType === "hd"
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure && a.stage === "g5" && a.dialysisType === "hd"
       }
     ],
     evaluate(a, ctx) {
@@ -297,7 +306,7 @@ const PROBLEMS = {
         return {
           status: "green",
           title: "ให้การรักษาทันที",
-          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่คำนึงถึง stage CKD\n• ห้ามเลือดด้วย local hemostatic agents อย่างเข้มงวด\n• งด NSAIDs ทุกกรณี ใช้ Paracetamol แทน\n• ระวัง AV fistula — ห้ามวัด BP หรือแทงเส้นเลือดที่แขนข้าง fistula\n• ผู้ป่วย HD ที่ล้างไตมาวันเดียวกัน: ระวัง heparin effect ใช้ hemostasis เข้มข้นยิ่งขึ้น\n• เตรียม emergency kit พร้อม · monitor ตลอดหัตถการ"
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่คำนึงถึง stage CKD\n• ห้ามเลือดด้วย local hemostatic agents อย่างเข้มงวด\n• งด NSAIDs ทุกกรณี ใช้ Paracetamol แทน\n• ระวัง AV fistula — ห้ามวัด BP หรือแทงเส้นเลือดที่แขนข้าง fistula\n• ผู้ป่วย HD ที่ล้างไตมาวันเดียวกัน: ระวัง heparin effect ใช้ hemostasis เข้มข้นยิ่งขึ้น\n• เตรียม emergency kit พร้อม · monitor ตลอดหัตถการ\n• พิจารณาให้การรักษาที่ห้องฉุกเฉินหรือห้องผ่าตัด และพิจารณา Admit เป็นผู้ป่วยใน"
         };
       }
 
@@ -318,18 +327,13 @@ const PROBLEMS = {
         "• นัดติดตามอาการ 24 ชั่วโมง";
 
       const drugMsg = {
-        g12: "\n\nยาแก้ปวด: Paracetamol เป็นอันดับแรก\n• NSAIDs: หลีกเลี่ยง — ถ้าจำเป็นใช้ได้ระยะสั้น (≤3 วัน) ขนาดต่ำสุด",
-        g3:  "\n\nยาแก้ปวด: Paracetamol ≤4g/วัน เท่านั้น งด NSAIDs\nยาปฏิชีวนะ: ใช้ได้ตามขนาดปกติ",
-        g4:  "\n\nยาแก้ปวด: Paracetamol ≤3g/วัน งด NSAIDs และ Tramadol\nยาปฏิชีวนะ: เลือก Clindamycin 300mg q6–8h (ไม่ต้องปรับขนาด)\n  หรือ Amoxicillin 500mg q12h (ลดจาก q8h)",
-        g5:  "\n\nยาแก้ปวด: Paracetamol ≤2g/วัน ห่างกัน ≥8 ชม. งด NSAIDs และ Tramadol\nยาปฏิชีวนะ: เลือก Clindamycin หรือ Doxycycline (ไม่ต้องปรับขนาด)\n  หลีกเลี่ยง Amoxicillin — ถ้าจำเป็น: 500mg q24h"
+        g12: "\n\nยาแก้ปวด: Paracetamol ขนาดปกติ (≤4g/วัน) เป็นอันดับแรก\n• NSAIDs: หลีกเลี่ยง — ถ้าจำเป็นใช้ได้ระยะสั้น (≤3 วัน) ขนาดต่ำสุด",
+        g3:  "\n\nยาแก้ปวด: Paracetamol ขนาดปกติ (≤4g/วัน) งด NSAIDs\nยาปฏิชีวนะ: ใช้ได้ตามขนาดปกติ",
+        g4:  "\n\nยาแก้ปวด: Paracetamol ขนาดปกติ (≤4g/วัน) งด NSAIDs และ Tramadol\nยาปฏิชีวนะ: เลือก Clindamycin 300mg q6–8h (ไม่ต้องปรับขนาด)\n  หรือ Amoxicillin 500mg q12h (ลดจาก q8h)",
+        g5:  "\n\nยาแก้ปวด: Paracetamol ขนาดปกติได้ แต่ยืดช่วงห่างเป็น q8h (≤3g/วัน) งด NSAIDs และ Tramadol\nยาปฏิชีวนะ: เลือก Clindamycin หรือ Doxycycline (ไม่ต้องปรับขนาด)\n  หลีกเลี่ยง Amoxicillin — ถ้าจำเป็น: 500mg q24h"
       }[stage];
 
       const isHD = stage === "g5" && a.dialysisType === "hd";
-      const hdNote = isHD
-        ? ({ today:     "\n⚠️ ล้างไตมาวันนี้: heparin ยังออกฤทธิ์ ระวังเลือดออกมากกว่าปกติ",
-             yesterday: "\n✅ ล้างไตมาเมื่อวาน: เหมาะที่สุดสำหรับทำหัตถการ heparin หมดฤทธิ์แล้ว",
-             before:    "\n⚠️ ล้างไตมานานกว่า 1 วัน: uremia เพิ่มขึ้น platelet dysfunction มากขึ้น" }[a.hdDay] || "")
-        : "";
 
       /* G1–G2 */
       if (stage === "g12") {
@@ -381,10 +385,15 @@ const PROBLEMS = {
 
       /* G5 / Dialysis */
       if (stage === "g5") {
-        /* noBleed: รักษาได้เสมอ + note ตาม HD timing */
+        if (!a.dialysisType) return { status: null };
+        if (a.dialysisType === "hd" && !a.hdDay) return { status: null };
+
+        /* noBleed: ไม่มีเลือดออก → HD timing ไม่เกี่ยว ทำได้ทุกวัน */
         if (proc === "noBleed") return {
           status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง",
-          message: "คำแนะนำ\n• ปรับขนาดยาทุกตัวตามระดับ eGFR\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg + hdNote
+          message: "คำแนะนำ\n• ปรับขนาดยาทุกตัวตามระดับ eGFR" +
+            (isHD ? "\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula\n• ทำได้ทุกวัน ไม่ต้องรอวันหลัง HD (หัตถการไม่มีเลือดออก)" : "") +
+            drugMsg
         };
 
         /* lowBleed */
@@ -394,25 +403,24 @@ const PROBLEMS = {
             status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่",
             message: "คำแนะนำ\n✅ ล้างไตมาเมื่อวาน: เวลาที่เหมาะที่สุดสำหรับทำหัตถการ\n• heparin หมดฤทธิ์แล้ว · platelet function ดีที่สุดหลัง HD\n" + hemostasisFull + "\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg
           };
-          /* ล้างไตวันนี้ → heparin active → เลื่อนถ้าทำได้ */
-          if (isHD && a.hdDay === "today") {
-            if (ctx.proc === "urgency") return {
-              status: "amber", title: "ระมัดระวังมาก — heparin ยังออกฤทธิ์ (ถ้าเลื่อนได้ นัดพรุ่งนี้)",
-              message: "คำแนะนำ (Urgency)\n⚠️ ล้างไตมาวันนี้ — heparin ยังออกฤทธิ์ เสี่ยงเลือดออกมากกว่าปกติ\n• ถ้าเลื่อนได้: นัดวันพรุ่งนี้จะดีกว่า\n• ถ้าทำทันที: ใช้ hemostasis เข้มข้นเป็นพิเศษ\n" + hemostasisFull + "\n• ระวัง AV fistula" + drugMsg
-            };
-            return {
-              status: "red", title: "แนะนำเลื่อนนัดเป็นวันพรุ่งนี้ (หลัง HD)",
-              message: "ควรเลื่อนหัตถการไปวันพรุ่งนี้\n• Heparin ยังออกฤทธิ์ เสี่ยงเลือดออกสูง\n• วันพรุ่งนี้: heparin หมดฤทธิ์ + platelet function ดีที่สุด" + drugMsg
-            };
-          }
-          /* HD other / PD / ยังไม่ได้ล้างไต → Urgency รักษาได้, Elective ส่ง Consult */
+          /* HD วันอื่น (วันนี้ หรือนานกว่า 1 วัน) → เลื่อนมาวันหลัง HD */
+          if (isHD && a.hdDay === "other") return {
+            status: "red", title: "แนะนำให้มารับการรักษาวันหลังจากล้างไต 1 วัน",
+            message: "• แนะนำให้ผู้ป่วยมารับการรักษาในวันถัดจากวัน HD ครั้งต่อไป\n  (วันนั้น heparin หมดฤทธิ์แล้ว + platelet function ดีที่สุด)\n• ระหว่างรอ: ให้ยาแก้ปวด / ยาปฏิชีวนะตามอาการได้" + drugMsg
+          };
+          /* PD + lowBleed → รักษาได้ทุกวัน ไม่มี heparin concern */
+          if (a.dialysisType === "pd") return {
+            status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่",
+            message: "คำแนะนำ\n• ไม่มีข้อจำกัดด้านวันนัด (PD ไม่ใช้ heparin)\n" + hemostasisFull + drugMsg
+          };
+          /* ยังไม่ได้ล้างไต → Urgency รักษาได้, Elective ส่ง Consult */
           if (ctx.proc === "urgency") return {
             status: "amber", title: "ให้การรักษาได้อย่างระมัดระวังมาก (Urgency — ไม่รอ Consult)",
-            message: "คำแนะนำ (รักษาได้เลย เนื่องจากเร่งด่วน)\n• Platelet dysfunction มีนัยสำคัญ ห้ามเลือดเข้มข้น\n" + hemostasisFull + "\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg + hdNote
+            message: "คำแนะนำ (รักษาได้เลย เนื่องจากเร่งด่วน)\n• Platelet dysfunction มีนัยสำคัญ ห้ามเลือดเข้มข้น\n" + hemostasisFull + drugMsg
           };
           return {
             status: "red", title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ",
-            message: "ต้องส่งปรึกษาอายุรกรรมก่อนทำหัตถการ\n• ประเมิน platelet function\n" + (isHD ? "• ประสาน HD team เพื่อนัดทำในวันถัดจากวัน HD\n" : "") + "• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg,
+            message: "ต้องส่งปรึกษาอายุรกรรมก่อนทำหัตถการ\n• ประเมิน platelet function" + drugMsg,
             consultBody: true
           };
         }
@@ -424,20 +432,22 @@ const PROBLEMS = {
             status: "amber", title: "ให้การรักษาได้อย่างระมัดระวังมาก",
             message: "คำแนะนำ\n✅ ล้างไตมาเมื่อวาน: เวลาที่เหมาะที่สุดสำหรับทำหัตถการ\n• ใช้ hemostatic protocol เต็มรูปแบบ\n" + hemostasisFull + "\n• แจ้งอายุรแพทย์ที่ดูแลผู้ป่วยให้รับทราบก่อนทำ\n• ระวัง AV fistula — ห้ามวัด BP ที่แขนข้าง fistula" + drugMsg
           };
-          /* ล้างไตวันนี้ → ไม่เหมาะ */
-          if (isHD && a.hdDay === "today") {
-            if (ctx.proc === "urgency") return {
-              status: "red", title: "พิจารณาส่ง ER / Consult อายุรกรรม",
-              message: "HD วันนี้ — heparin ยังออกฤทธิ์ ไม่เหมาะสำหรับหัตถการที่มีเลือดออกมาก\n• ถ้าเลื่อนได้: นัดวันพรุ่งนี้ (หลัง HD)\n• ถ้ารอไม่ได้: ส่ง ER เพื่อรักษาร่วมกับอายุรแพทย์" + drugMsg, consultBody: true
-            };
-            return {
-              status: "red", title: "แนะนำเลื่อนนัดเป็นวันพรุ่งนี้ (หลัง HD)",
-              message: "ควรเลื่อนหัตถการไปวันพรุ่งนี้\n• Heparin ยังออกฤทธิ์ ไม่ปลอดภัยสำหรับหัตถการที่มีเลือดออกมาก\n• วันพรุ่งนี้: heparin หมดฤทธิ์ + platelet function ดีที่สุด" + drugMsg
-            };
-          }
-          /* other / PD / ยังไม่ได้ล้างไต → Consult */
+          /* HD วันอื่น (วันนี้ หรือนานกว่า 1 วัน) → เลื่อนมาวันหลัง HD */
+          if (isHD && a.hdDay === "other") return {
+            status: "red", title: "แนะนำให้มารับการรักษาวันหลังจากล้างไต 1 วัน",
+            message: "• แนะนำให้ผู้ป่วยมารับการรักษาในวันถัดจากวัน HD ครั้งต่อไป\n  (วันนั้น heparin หมดฤทธิ์แล้ว + platelet function ดีที่สุด)\n• ระหว่างรอ: ให้ยาแก้ปวด / ยาปฏิชีวนะตามอาการได้" + drugMsg
+          };
+          /* PD + midBleed → รักษาได้ทุกวัน (ไม่มี heparin) + พิจารณา ATB prophylaxis */
+          if (a.dialysisType === "pd") return {
+            status: "amber", title: "ให้การรักษาได้อย่างระมัดระวังมาก",
+            message: "คำแนะนำ\n• ใช้ hemostatic protocol เต็มรูปแบบ\n" + hemostasisFull +
+              "\n• พิจารณา ATB prophylaxis ก่อนทำหัตถการ เพื่อป้องกัน peritonitis\n" +
+              "  — Amoxicillin 2g PO 1 ชม. ก่อนทำ\n" +
+              "  — ถ้าแพ้ Penicillin: Clindamycin 600mg PO 1 ชม. ก่อนทำ\n" +
+              "• ไม่มีข้อจำกัดด้านวันนัด (PD ไม่ใช้ heparin)" + drugMsg
+          };
+          /* G5 ยังไม่ได้ล้างไต (dialysisType === "none") → Consult */
           let msg = "ต้องส่งปรึกษาอายุรกรรมก่อนทำหัตถการ\n• อาจต้องทำ dialysis ก่อนเพื่อ optimize platelet function\n• พิจารณา Desmopressin (DDAVP) + Tranexamic acid protocol\n• Hemostatic protocol เต็มรูปแบบ";
-          if (isHD) msg += "\n• นัดทำในวันถัดจากวัน HD เท่านั้น";
           if (ctx.proc === "urgency") msg += "\n• ถ้ารอ Consult ไม่ได้: พิจารณาส่ง ER เพื่อรักษาร่วมกับอายุรแพทย์\n• นัดมารับการรักษาภายใน 7 วัน";
           return { status: "red", title: "ส่งปรึกษาอายุรกรรมก่อนทำหัตถการ", message: msg + drugMsg, consultBody: true };
         }
@@ -462,42 +472,9 @@ const PROBLEMS = {
   /* ---------- Aspirin ---------- */
   aspirin: {
     label: "Aspirin",
-    procedures: [
-      {
-        value: "noBleed", dot: "🪥",
-        label: "หัตถการที่ไม่น่าจะทำให้เกิดเลือดออก (Unlikely to cause bleeding)",
-        sub: [
-          "การตรวจประเมินสภาพช่องปากและรังสีวินิจฉัย",
-          "การฉีดยาชาเฉพาะที่แบบ Infiltration, Intraligamentary หรือ Nerve block",
-          "การบูรณะฟัน (อุดฟัน) ที่ขอบวัสดุอยู่เหนือขอบเหงือก",
-          "การพิมพ์ปากสำหรับการทำฟันเทียม",
-          "การปรับแต่งเครื่องมือจัดฟัน และการใส่ฟันเทียมถอดได้หรือติดแน่น"
-        ]
-      },
-      {
-        value: "lowBleed", dot: "🦷",
-        label: "หัตถการที่มีความเสี่ยงต่ำ (Low bleeding risk)",
-        sub: [
-          "การถอนฟันแบบปกติ 1–3 ซี่ ที่คาดว่าจะมีแผลขนาดจำกัด (Simple extractions)",
-          "การเจาะระบายหนองภายในช่องปาก (Incision & drainage)",
-          "การขูดหินปูนและเกลารากฟัน (Root surface debridement: RSD)",
-          "การบูรณะฟันที่มีขอบของวัสดุอยู่ใต้ขอบเหงือก",
-          "การตรวจปริทันต์แบบละเอียด (Detailed six-point full periodontal examination)"
-        ]
-      },
-      {
-        value: "midBleed", dot: "🔪",
-        label: "หัตถการที่มีความเสี่ยงสูงขึ้น (Higher bleeding risk)",
-        sub: [
-          "การถอนฟันที่ซับซ้อน หรือถอนฟันติดกันหลายซี่ที่ทำให้เกิดแผลขนาดใหญ่",
-          "หัตถการศัลยกรรมที่มีการเปิดแผ่นเนื้อเยื่อ (Flap raising procedures)",
-          "ศัลยกรรมปริทันต์ (Periodontal surgery) และตัดแต่งขอบเหงือก",
-          "การผ่าตัดเพื่อใส่รากฟันเทียม (Dental implant surgery)",
-          "การตัดชิ้นเนื้อ (Biopsies) การผ่าตัดเพิ่มความยาวของตัวฟัน และศัลยกรรมปลายรากฟัน"
-        ]
-      }
-    ],
     questions: [
+      PROC_QUESTION,
+      BLEED_PROCEDURE_QUESTION,
       {
         id: "dose",
         label: "ขนาดยา / ประเภทการใช้ Aspirin",
@@ -506,7 +483,8 @@ const PROBLEMS = {
         options: [
           { value: "low",  text: "Aspirin 81 มก./วัน" },
           { value: "high", text: "Aspirin 325 มก./วัน หรือ Dual antiplatelet therapy", sub: "เช่น Aspirin + Clopidogrel" }
-        ]
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure
       }
     ],
     evaluate(a, ctx) {
@@ -516,7 +494,7 @@ const PROBLEMS = {
         return {
           status: "green",
           title: "ให้การรักษาทันที",
-          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่หยุดยา\n• ห้ามเลือดด้วย local hemostatic agent\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกหลังทำหัตถการ"
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันทีโดยไม่หยุดยา\n• ห้ามเลือดด้วย local hemostatic agent\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกหลังทำหัตถการ\n• พิจารณาให้การรักษาที่ห้องฉุกเฉินหรือห้องผ่าตัด และพิจารณา Admit เป็นผู้ป่วยใน"
         };
       }
 
@@ -579,12 +557,9 @@ const PROBLEMS = {
   /* ---------- DOACs / NOACs ---------- */
   doac: {
     label: "DOACs / NOACs",
-    procedures: [
-      { value: "noBleed",  dot: "🪥", label: "ไม่มีเลือดออก / เลือดออกน้อยมาก",     sub: "เช่น อุดฟัน, รักษาคลองรากฟัน" },
-      { value: "lowBleed", dot: "🦷", label: "เสี่ยงเลือดออกน้อย",                   sub: "เช่น ขูดหินปูน, ถอนฟัน 1–3 ซี่, ผ่าระบายหนอง" },
-      { value: "midBleed", dot: "🔪", label: "เสี่ยงเลือดออกสูงขึ้น",                sub: "เช่น ถอนฟัน > 3 ซี่, ผ่าฟันคุด, รากฟันเทียม, ศัลยกรรมปริทันต์" }
-    ],
     questions: [
+      PROC_QUESTION,
+      BLEED_PROCEDURE_QUESTION,
       {
         id: "drug",
         label: "ชนิดยา DOACs ที่ผู้ป่วยใช้",
@@ -627,7 +602,7 @@ const PROBLEMS = {
         return {
           status: "green",
           title: "ให้การรักษาทันที",
-          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันที โดยไม่หยุดยา DOACs\n• ห้ามเลือดด้วย local hemostatic agent อย่างเข้มงวด\n  – ใส่ฟองน้ำห้ามเลือด (Gelfoam® หรือ Surgicel®) ในเบ้าฟัน\n  – เย็บแผลปิดให้แน่น\n  – พิจารณาใช้น้ำยาบ้วนปาก Tranexamic acid 5%\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกอย่างใกล้ชิดระหว่างและหลังทำหัตถการ"
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันที โดยไม่หยุดยา DOACs\n• ห้ามเลือดด้วย local hemostatic agent อย่างเข้มงวด\n  – ใส่ฟองน้ำห้ามเลือด (Gelfoam® หรือ Surgicel®) ในเบ้าฟัน\n  – เย็บแผลปิดให้แน่น\n  – พิจารณาใช้น้ำยาบ้วนปาก Tranexamic acid 5%\n• เตรียม emergency kit และยาฉุกเฉินให้พร้อม\n• สังเกตอาการเลือดออกอย่างใกล้ชิดระหว่างและหลังทำหัตถการ\n• พิจารณาให้การรักษาที่ห้องฉุกเฉินหรือห้องผ่าตัด และพิจารณา Admit เป็นผู้ป่วยใน"
         };
       }
 
