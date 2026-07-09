@@ -187,7 +187,7 @@ const PROBLEMS = {
           { value: "yes", text: "✅ มีผล INR" },
           { value: "no",  text: "❌ ไม่มีผล INR" }
         ],
-        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure && a.procedure !== "noBleed"
       },
       {
         id: "inrLevel",
@@ -198,7 +198,7 @@ const PROBLEMS = {
           { value: "leq3", text: "INR ≤ 3.0" },
           { value: "gt3",  text: "INR > 3.0" }
         ],
-        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure && a.inr === "yes"
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.procedure && a.procedure !== "noBleed" && a.inr === "yes"
       }
     ],
     evaluate(a, ctx) {
@@ -210,12 +210,15 @@ const PROBLEMS = {
         };
       }
 
-      if (!a.inr) return { status: null };
-
       if (!ctx.procedure) return { status: null };
 
+      if (ctx.procedure === "noBleed") {
+        return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "หัตถการประเภทนี้ไม่น่าจะทำให้เกิดเลือดออก สามารถให้การรักษาได้โดยไม่จำเป็นต้องตรวจผล INR\n• ไม่จำเป็นต้องหยุดยา Warfarin" };
+      }
+
+      if (!a.inr) return { status: null };
+
       if (a.inr === "no") {
-        if (ctx.procedure === "noBleed") return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "หัตถการประเภทนี้ไม่น่าจะทำให้เกิดเลือดออก สามารถให้การรักษาได้โดยไม่จำเป็นต้องมีผล INR\n• ไม่จำเป็นต้องหยุดยา Warfarin" };
         if (ctx.proc === "urgency") return { status: "red",   title: "ต้องตรวจ INR ก่อนทำหัตถการ", message: "ผู้ป่วยไม่มีผล INR ภายใน 72 ชั่วโมง ให้ส่งตรวจ INR ก่อน แล้วประเมินซ้ำตามผลที่ได้" };
         if (ctx.proc === "elective") return { status: "amber", title: "แนะนำตรวจ INR ก่อนนัดทำหัตถการ", message: "ผู้ป่วยไม่มีผล INR ภายใน 72 ชั่วโมง แนะนำให้ตรวจ INR ก่อน แล้วนัดทำหัตถการใหม่" };
       }
@@ -226,11 +229,9 @@ const PROBLEMS = {
 
       if (ctx.proc === "urgency") {
         if (a.inrLevel === "leq3") {
-          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "INR ≤ 3.0\nสามารถทำหัตถการได้ตามปกติ ไม่จำเป็นต้องหยุดยา Warfarin" };
           if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "INR ≤ 3.0\nคำแนะนำ\n" + hemostasisMsg };
           if (ctx.procedure === "midBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "INR ≤ 3.0\nคำแนะนำ\n" + hemostasisMsg };
         } else {
-          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "INR > 3.0\nหัตถการประเภทนี้ไม่มีเลือดออก สามารถทำได้ตามปกติ" };
           if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง หรือ ส่ง Consult นัดมารับการรักษาภายใน 7 วัน", message: "INR > 3.0\nตัวเลือกที่ 1: ให้การรักษาอย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่\n" + hemostasisMsg + "\nตัวเลือกที่ 2: ส่ง Consult และนัดมารับการรักษาภายใน 7 วัน", consultBody: true };
           if (ctx.procedure === "midBleed") return { status: "red",   title: "ส่ง Consult นัดมารับการรักษาภายใน 7 วัน", message: "INR > 3.0\nต้องส่งปรึกษาและนัดมารับการรักษาภายใน 7 วัน", consultBody: true };
         }
@@ -238,11 +239,9 @@ const PROBLEMS = {
 
       if (ctx.proc === "elective") {
         if (a.inrLevel === "leq3") {
-          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "INR ≤ 3.0\nสามารถทำหัตถการได้ตามปกติ ไม่จำเป็นต้องหยุดยา Warfarin" };
           if (ctx.procedure === "lowBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "INR ≤ 3.0\nคำแนะนำ\n" + hemostasisMsg };
           if (ctx.procedure === "midBleed") return { status: "amber", title: "ให้การรักษาได้อย่างระมัดระวัง ร่วมกับการห้ามเลือดเฉพาะที่", message: "INR ≤ 3.0\nคำแนะนำ\n" + hemostasisMsg };
         } else {
-          if (ctx.procedure === "noBleed")  return { status: "green", title: "ให้การรักษาได้ตามปกติ", message: "INR > 3.0\nหัตถการประเภทนี้ไม่มีเลือดออก สามารถทำได้ตามปกติ" };
           if (ctx.procedure === "lowBleed") return { status: "red",   title: "ส่ง Consult", message: "INR > 3.0\nต้องส่งปรึกษาก่อนทำหัตถการ", consultBody: true };
           if (ctx.procedure === "midBleed") return { status: "red",   title: "ส่ง Consult", message: "INR > 3.0\nต้องส่งปรึกษาก่อนทำหัตถการ", consultBody: true };
         }
@@ -697,6 +696,551 @@ const PROBLEMS = {
 
       const drugName = a.drug === "rivaroxaban" ? "Rivaroxaban" : "Edoxaban";
       return "ผู้ป่วยรับประทานยา " + drugTxt + " (วันละ 1 ครั้ง มื้อเช้า) ต้องการทำหัตถการ " + ctx.procedureLabel + " (" + PROC_LABELS[ctx.proc] + ") ซึ่งมีความเสี่ยงเลือดออกสูงขึ้น ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์พิจารณาอนุมัติการเลื่อนยา " + drugName + " มื้อเช้าออกไปรับประทานหลังเลือดหยุดสนิทแล้วอย่างน้อย 4 ชั่วโมง";
+    }
+  },
+
+  /* ---------- MRONJ (Medication-Related Osteonecrosis of the Jaw) ---------- */
+  mronj: {
+    label: "ผู้ป่วยเสี่ยง MRONJ",
+    DRUG_LABELS: {
+      oralBP:          "Bisphosphonate ชนิดรับประทาน (รักษาโรคกระดูกพรุน)",
+      ivBP_osteo:      "Zoledronate ฉีดเข้าหลอดเลือด ปีละครั้ง (รักษาโรคกระดูกพรุน)",
+      denosumab_osteo: "Denosumab (Prolia®) ฉีดทุก 6 เดือน (รักษาโรคกระดูกพรุน)",
+      highdose:        "ยาต้านการสลายกระดูก/ยับยั้งการสร้างหลอดเลือด ขนาดสูงสำหรับผู้ป่วยมะเร็ง"
+    },
+    STAGE_LABELS: {
+      s0: "Stage 0 (มีอาการ แต่ยังไม่มีกระดูกตายโผล่)",
+      s1: "Stage 1 (กระดูกตายโผล่ ไม่มีอาการ ไม่ติดเชื้อ)",
+      s2: "Stage 2 (กระดูกตายโผล่ ร่วมกับปวด/ติดเชื้อ)",
+      s3: "Stage 3 (กระดูกตายลุกลามเกินเบ้ารากฟัน / กระดูกหัก / ทะลุไซนัส-ใบหน้า)"
+    },
+    questions: [
+      PROC_QUESTION,
+      {
+        id: "mronjStatus",
+        label: "สถานะของผู้ป่วย",
+        type: "chipChoice",
+        chipStack: true,
+        clears: ["stage", "procedure", "drugType", "oralDuration", "denoTiming"],
+        options: [
+          {
+            value: "established", dot: "🦴",
+            text: "มีภาวะ MRONJ อยู่แล้ว หรือสงสัย",
+            sub: "พบกระดูกตายโผล่ในช่องปาก / หยั่ง probe ถึงกระดูกผ่านรูทะลุ / มีรูทะลุออกนอกใบหน้า"
+          },
+          {
+            value: "atrisk", dot: "⚠️",
+            text: "ยังไม่มีกระดูกตาย แต่มีความเสี่ยง",
+            sub: "ได้รับ (หรือเคยได้รับ) ยาต้านการสลายกระดูก / ยับยั้งการสร้างหลอดเลือด แต่ยังไม่พบรอยโรค"
+          }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency"
+      },
+      {
+        id: "stage",
+        label: "ระยะของโรค (AAOMS Staging)",
+        type: "chipChoice",
+        chipStack: true,
+        options: [
+          { value: "s0", text: "Stage 0", sub: "ปวดฟัน/ปวดกรามอธิบายไม่ได้ ฟันโยกโดยไม่มีปริทันต์ ชาริมฝีปาก — ยังไม่มีกระดูกตายโผล่" },
+          { value: "s1", text: "Stage 1", sub: "กระดูกตายโผล่ หรือ probe ถึงกระดูกได้ · ไม่ปวด · ไม่ติดเชื้อ" },
+          { value: "s2", text: "Stage 2", sub: "กระดูกตายโผล่ ร่วมกับปวด บวม แดง มีหนอง (ติดเชื้อ)" },
+          { value: "s3", text: "Stage 3", sub: "ลุกลามเกินเบ้ารากฟัน · กระดูกหักทางพยาธิ · รูทะลุนอกใบหน้า · ทะลุไซนัส/โพรงจมูก" }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && a.mronjStatus === "established"
+      },
+      {
+        id: "procedure",
+        label: "เลือกประเภทหัตถการ",
+        type: "chipChoice",
+        chipStack: true,
+        clears: ["drugType", "oralDuration", "denoTiming"],
+        options: [
+          {
+            value: "nonInvasive", dot: "🪥",
+            text: "หัตถการที่ไม่รุกล้ำกระดูก (Non-invasive)",
+            sub: [
+              "การตรวจ อุดฟัน และงานบูรณะฟันเหนือขอบเหงือก",
+              "การขูดหินปูนและเกลารากฟัน",
+              "การรักษาคลองรากฟัน (Root canal treatment)",
+              "การพิมพ์ปาก ใส่ฟันเทียม และการปรับเครื่องมือจัดฟัน"
+            ]
+          },
+          {
+            value: "invasive", dot: "🔪",
+            text: "หัตถการรุกล้ำกระดูก (Invasive / Dentoalveolar surgery)",
+            sub: [
+              "การถอนฟัน (รวมถอนฟันผ่าตัด)",
+              "การผ่าตัดฝังรากฟันเทียม (Dental implant)",
+              "ศัลยกรรมปริทันต์/ศัลยกรรมกระดูกที่เปิดถึงกระดูก",
+              "การตัดชิ้นเนื้อ และศัลยกรรมปลายรากฟัน"
+            ]
+          }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && a.mronjStatus === "atrisk"
+      },
+      {
+        id: "drugType",
+        label: "กลุ่มยาที่ผู้ป่วยได้รับ (Drug-centered risk)",
+        type: "chipChoice",
+        chipStack: true,
+        clears: ["oralDuration", "denoTiming"],
+        options: [
+          { value: "oralBP",          text: "Bisphosphonate ชนิดรับประทาน",           sub: "เช่น Alendronate 70 mg/สัปดาห์ (รักษาโรคกระดูกพรุน)" },
+          { value: "ivBP_osteo",      text: "Zoledronate ฉีด IV ปีละครั้ง",           sub: "Zoledronate 5 mg/ปี (รักษาโรคกระดูกพรุน)" },
+          { value: "denosumab_osteo", text: "Denosumab (Prolia®) ฉีดทุก 6 เดือน",     sub: "Denosumab 60 mg SC q6 เดือน (รักษาโรคกระดูกพรุน)" },
+          { value: "highdose",        text: "ยาขนาดสูงสำหรับผู้ป่วยมะเร็ง",           sub: "Zoledronate 4 mg q3–4 สัปดาห์ · Denosumab 120 mg q4 สัปดาห์ · ยา Antiangiogenic (เช่น Bevacizumab)" }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && a.mronjStatus === "atrisk" && a.procedure === "invasive"
+      },
+      {
+        id: "oralDuration",
+        label: "ระยะเวลาที่ใช้ยา และปัจจัยเสี่ยงร่วม",
+        type: "chipChoice",
+        chipStack: true,
+        options: [
+          { value: "lt4", text: "ใช้ยา ≤ 4 ปี และไม่มีปัจจัยเสี่ยงร่วม", sub: "ความเสี่ยงต่ำมาก (~0.04%)" },
+          { value: "ge4", text: "ใช้ยา > 4 ปี หรือมีปัจจัยเสี่ยงร่วม",  sub: "เช่น สเตียรอยด์ทางระบบ, เบาหวานคุมไม่ได้, สูบบุหรี่, ได้ยาเคมีบำบัด" }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && a.mronjStatus === "atrisk" && a.procedure === "invasive" && a.drugType === "oralBP"
+      },
+      {
+        id: "denoTiming",
+        label: "ฉีด Denosumab เข็มล่าสุดมากี่เดือนแล้ว?",
+        type: "chipChoice",
+        chipStack: true,
+        options: [
+          { value: "m34",    text: "เดือนที่ 3–4 หลังฉีดเข็มล่าสุด", sub: "✅ ช่วงเวลาที่เหมาะสมที่สุด (ฤทธิ์ยาอ่อนลง มีเวลา 6–8 สัปดาห์ให้แผลหายก่อนเข็มถัดไป)" },
+          { value: "other",  text: "เดือนที่ 1–2 หรือ 5–6",         sub: "ยังใกล้เข็มล่าสุด หรือใกล้เข็มถัดไป" }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && a.mronjStatus === "atrisk" && a.procedure === "invasive" && a.drugType === "denosumab_osteo"
+      }
+    ],
+    evaluate(a, ctx) {
+      const proc = ctx.proc;
+      if (!proc) return { status: null };
+
+      /* ---------- Emergency: รักษาก่อน ---------- */
+      if (proc === "emergency") {
+        return {
+          status: "green",
+          title: "ให้การรักษาฉุกเฉินทันที",
+          message: "คำแนะนำ\n• ให้การรักษาฉุกเฉินทันที (ระบายหนอง/ห้ามเลือด/บรรเทาปวด)\n• หากต้องถอนฟัน ให้ทำแบบ atraumatic บอบช้ำน้อยที่สุด และเย็บปิดแผลให้ขอบชิดกัน (primary closure)\n• จ่าย Chlorhexidine 0.12% บ้วนปาก และยาปฏิชีวนะเมื่อมีการติดเชื้อ\n• ห้ามสั่งหยุดยาต้านการสลายกระดูกเองในภาวะฉุกเฉิน\n• นัดติดตามแผลใกล้ชิด และส่งต่อศัลยกรรมช่องปากหากสงสัยกระดูกตาย"
+        };
+      }
+
+      const status = a.mronjStatus;
+      if (!status) return { status: null };
+
+      const atraumatic =
+        "• ถอนฟัน/ทำหัตถการด้วยเทคนิค atraumatic ให้บอบช้ำน้อยที่สุด\n" +
+        "• กรอลบขอบกระดูกที่คม และเย็บปิดแผลให้ขอบชิดกัน (primary closure)\n" +
+        "• จ่าย Chlorhexidine 0.12% บ้วนปากก่อน–หลังทำหัตถการ\n" +
+        "• จ่ายยาปฏิชีวนะเฉพาะเมื่อมีข้อบ่งชี้การติดเชื้อ (ไม่จ่ายเหวี่ยงแหทุกเคส)\n" +
+        "• นัดติดตามแผล 1–2 สัปดาห์ จนเยื่อบุปิดสมบูรณ์";
+      const infectionNote =
+        "\n\n⚠️ ฟันที่ติดเชื้อรุนแรงและบูรณะไม่ได้ ควรถอนออก — การปล่อยฟันติดเชื้อไว้เป็นภัยต่อกระดูกขากรรไกร มากกว่าการถอนอย่างถูกวิธี";
+      const noSelfStop =
+        "\n\n❗ ทันตแพทย์ห้ามสั่งหยุดยาต้านการสลายกระดูกเอง — ต้องปรึกษาแพทย์เจ้าของไข้ก่อนเสมอ";
+
+      /* ---------- มี MRONJ อยู่แล้ว (Established) ---------- */
+      if (status === "established") {
+        const s = a.stage;
+        if (!s) return { status: null };
+
+        if (s === "s0") {
+          return {
+            status: "amber",
+            title: "รักษาแบบอนุรักษ์ + ติดตามใกล้ชิด (Stage 0)",
+            message: "Stage 0 — มีอาการแต่ยังไม่มีกระดูกตายโผล่\nคำแนะนำ\n• รักษาแบบอนุรักษ์: ควบคุมอาการปวด จัดการฟันต้นเหตุ/การติดเชื้อ\n• Chlorhexidine 0.12% บ้วนปาก และดูแลสุขอนามัยช่องปากเข้มงวด\n• เฝ้าระวังใกล้ชิด (~50% อาจดำเนินเข้าสู่ Stage 1)\n• ปรึกษา/ส่งต่อศัลยกรรมช่องปากและแม็กซิลโลเฟเชียลเพื่อร่วมประเมิน",
+            consultBody: true
+          };
+        }
+        if (s === "s1") {
+          return {
+            status: "red",
+            title: "ส่งต่อศัลยกรรมช่องปาก (Stage 1)",
+            message: "Stage 1 — กระดูกตายโผล่ ไม่ปวด ไม่ติดเชื้อ\nคำแนะนำ\n• รักษาแบบอนุรักษ์: Chlorhexidine 0.12% บ้วนปาก · ดูแลสุขอนามัยช่องปาก · กรอลบขอบกระดูกที่คมซึ่งเสียดสีเนื้อเยื่อ\n• ประเมินขอบเขตกระดูกตายด้วย CBCT (แม่นยำกว่าฟิล์ม panoramic)\n• ส่งต่อศัลยกรรมช่องปากฯ เพื่อพิจารณาการผ่าตัดตัดกระดูกตายตั้งแต่ระยะแรก",
+            consultBody: true
+          };
+        }
+        if (s === "s2") {
+          return {
+            status: "red",
+            title: "ให้ยาปฏิชีวนะ + ส่งต่อศัลยกรรมช่องปาก (Stage 2)",
+            message: "Stage 2 — กระดูกตายโผล่ ร่วมกับปวดและติดเชื้อ\nคำแนะนำ\n• เริ่มยาปฏิชีวนะทางระบบ: Amoxicillin-clavulanate หรือ Clindamycin หรือ Metronidazole\n• Chlorhexidine 0.12% บ้วนปาก · ควบคุมอาการปวด\n• ประเมินขอบเขตด้วย CBCT และพิจารณา PENTO protocol ประคับประคองก่อนผ่าตัด\n• ส่งต่อศัลยกรรมช่องปากฯ เพื่อผ่าตัดตัดกระดูกตาย (sequestrectomy/resection) + เย็บปิดแบบ tension-free",
+            consultBody: true
+          };
+        }
+        return {
+          status: "red",
+          title: "ส่งต่อศัลยกรรมช่องปากด่วน (Stage 3)",
+          message: "Stage 3 — กระดูกตายลุกลามเกินเบ้ารากฟัน (กระดูกหัก / รูทะลุนอกใบหน้า / ทะลุไซนัส)\nคำแนะนำ\n• เริ่มยาปฏิชีวนะทางระบบ และควบคุมอาการปวด/การติดเชื้อ\n• ประเมินด้วย CBCT/CT scan\n• ส่งต่อศัลยกรรมช่องปากและแม็กซิลโลเฟเชียลโดยด่วน เพื่อผ่าตัดใหญ่ (resection) และวางแผนบูรณะ",
+          consultBody: true
+        };
+      }
+
+      /* ---------- ยังไม่มีกระดูกตาย แต่เสี่ยง (At-risk) ---------- */
+      const procedure = ctx.procedure;
+      if (!procedure) return { status: null };
+
+      if (procedure === "nonInvasive") {
+        return {
+          status: "green",
+          title: "ให้การรักษาได้ตามปกติ",
+          message: "หัตถการที่ไม่รุกล้ำกระดูก ไม่เพิ่มความเสี่ยง MRONJ\nสามารถให้การรักษาได้ตามปกติ ไม่ต้องหยุดยาหรือปรึกษาแพทย์\n• เน้นดูแลสุขอนามัยช่องปาก ป้องกันการติดเชื้อ/การอักเสบ\n• ใช้ยาสีฟันฟลูออไรด์ และควบคุมโรคปริทันต์"
+        };
+      }
+
+      /* invasive */
+      const drug = a.drugType;
+      if (!drug) return { status: null };
+
+      /* ยาขนาดสูงสำหรับมะเร็ง → ความเสี่ยงสูงมาก */
+      if (drug === "highdose") {
+        return {
+          status: "red",
+          title: "ส่งปรึกษา/ส่งต่อก่อนทำหัตถการ (ความเสี่ยงสูง)",
+          message: "ผู้ป่วยได้รับยาต้านการสลายกระดูกขนาดสูง (มะเร็ง) — ความเสี่ยง MRONJ สูงมาก (สูงถึง ~1–18%)\nคำแนะนำ\n• ห้ามทำหัตถการรุกล้ำกระดูกโดยไม่ประเมินก่อน\n• ประสานแพทย์เจ้าของไข้ (oncologist) และส่งต่อ/ปรึกษาศัลยกรรมช่องปากฯ\n• พิจารณา CBCT ก่อนวางแผน · หากเลี่ยงการถอนได้ให้เลือกวิธีอนุรักษ์ (เช่น รักษาราก)\n• หากจำเป็นต้องถอน: ทำแบบ atraumatic + primary closure ภายใต้การดูแลของทีมสหวิชาชีพ" + infectionNote + noSelfStop,
+          consultBody: true
+        };
+      }
+
+      /* Zoledronate IV ปีละครั้ง (osteoporosis) → ความเสี่ยงต่ำ */
+      if (drug === "ivBP_osteo") {
+        return {
+          status: "amber",
+          title: "ทำหัตถการได้ ร่วมกับมาตรการป้องกัน",
+          message: "Zoledronate ฉีดปีละครั้ง (โรคกระดูกพรุน) — ความเสี่ยงต่ำ (~0.017–0.03%)\nสามารถทำหัตถการรุกล้ำได้ โดยไม่ต้องหยุดยา\nคำแนะนำ\n" + atraumatic + infectionNote,
+        };
+      }
+
+      /* Bisphosphonate รับประทาน → ขึ้นกับระยะเวลา/ปัจจัยเสี่ยง */
+      if (drug === "oralBP") {
+        const d = a.oralDuration;
+        if (!d) return { status: null };
+        if (d === "lt4") {
+          return {
+            status: "amber",
+            title: "ทำหัตถการได้ ร่วมกับมาตรการป้องกัน",
+            message: "Bisphosphonate รับประทาน ≤ 4 ปี ไม่มีปัจจัยเสี่ยงร่วม — ความเสี่ยงต่ำมาก\nสามารถทำหัตถการรุกล้ำได้ โดยไม่ต้องหยุดยาและไม่ต้องส่งปรึกษา\nคำแนะนำ\n" + atraumatic + infectionNote
+          };
+        }
+        return {
+          status: "amber",
+          title: "ทำหัตถการได้ ร่วมกับมาตรการป้องกัน + ส่งปรึกษาแพทย์เรื่องหยุดยา",
+          message: "Bisphosphonate รับประทาน > 4 ปี หรือมีปัจจัยเสี่ยงร่วม — ความเสี่ยงสูงขึ้น\nคำแนะนำ\n" + atraumatic +
+            "\n\nเรื่องการหยุดยา (Drug holiday):\n• ส่งปรึกษาแพทย์เจ้าของไข้ — หากประเมินว่าหยุดยาได้ปลอดภัย อาจพิจารณา drug holiday 2 เดือนก่อนถอนฟัน\n• หากหยุดยาไม่ได้ ให้ทำหัตถการแบบ atraumatic + primary closure โดยไม่ต้องหยุดยา" + infectionNote + noSelfStop,
+          consultBody: true
+        };
+      }
+
+      /* Denosumab (Prolia) osteoporosis → ใช้จังหวะเวลา (window เดือน 3–4) */
+      if (drug === "denosumab_osteo") {
+        const t = a.denoTiming;
+        if (!t) return { status: null };
+        if (t === "m34") {
+          return {
+            status: "green",
+            title: "ช่วงเวลาที่เหมาะสม — ทำหัตถการได้",
+            message: "Denosumab เดือนที่ 3–4 หลังฉีดเข็มล่าสุด — เป็นช่วงที่ฤทธิ์ยาอ่อนลง เหมาะที่สุดสำหรับหัตถการรุกล้ำ\nคำแนะนำ\n" + atraumatic +
+              "\n• ให้แผลหายภายใน 6–8 สัปดาห์ก่อนถึงกำหนดฉีดเข็มถัดไป (เดือนที่ 6)\n• ไม่ต้องหยุดยา — ห้ามเลื่อน/งดเข็มถัดไปเอง (เสี่ยง rebound fracture)" + infectionNote
+          };
+        }
+        return {
+          status: "amber",
+          title: "แนะนำจัดนัดให้อยู่ในเดือนที่ 3–4 หลังฉีด",
+          message: "Denosumab อยู่ในเดือนที่ 1–2 หรือ 5–6 หลังฉีดเข็มล่าสุด\nคำแนะนำ\n" +
+            (proc === "urgency"
+              ? "• เร่งด่วน: ทำหัตถการได้เลยแบบ atraumatic + primary closure ไม่ต้องรอ\n" + atraumatic
+              : "• นัดล่วงหน้า: แนะนำเลื่อนมาทำในเดือนที่ 3–4 หลังฉีดเข็มล่าสุด (window of opportunity)\n• ประสานแพทย์เจ้าของไข้เพื่อจัดจังหวะนัด ห้ามงด/เลื่อนเข็ม Denosumab เอง") +
+            infectionNote,
+          consultBody: proc !== "urgency"
+        };
+      }
+
+      return { status: null };
+    },
+    buildConsult(a, ctx) {
+      if (a.mronjStatus === "established") {
+        const stageTxt = this.STAGE_LABELS[a.stage] || "";
+        return "ผู้ป่วยมีภาวะกระดูกขากรรไกรตายจากการใช้ยา (MRONJ) " + stageTxt +
+          " ทางกลุ่มงานทันตกรรมขอส่งปรึกษา/ส่งต่อศัลยกรรมช่องปากและแม็กซิลโลเฟเชียล เพื่อร่วมประเมินและวางแผนการรักษา และขอความอนุเคราะห์ประสานแพทย์เจ้าของไข้เรื่องยาต้านการสลายกระดูก";
+      }
+
+      const drugTxt = this.DRUG_LABELS[a.drugType] || "ยาต้านการสลายกระดูก";
+      const procTxt = ctx.procedureLabel && ctx.procedureLabel !== "-" ? ctx.procedureLabel : "หัตถการรุกล้ำกระดูก";
+
+      if (a.drugType === "highdose") {
+        return "ผู้ป่วยได้รับ " + drugTxt + " และมีความจำเป็นต้องทำ " + procTxt + " (" + PROC_LABELS[ctx.proc] + ") ซึ่งมีความเสี่ยงต่อภาวะ MRONJ สูง ทางกลุ่มงานทันตกรรมขอส่งปรึกษาศัลยกรรมช่องปากฯ และขอความอนุเคราะห์แพทย์เจ้าของไข้ (oncologist) ร่วมประเมินความเสี่ยงและจังหวะการทำหัตถการ";
+      }
+
+      if (a.drugType === "denosumab_osteo") {
+        return "ผู้ป่วยได้รับ " + drugTxt + " และมีความจำเป็นต้องทำ " + procTxt + " (" + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์แพทย์เจ้าของไข้ประสานจังหวะการทำหัตถการให้อยู่ในเดือนที่ 3–4 หลังฉีดยาเข็มล่าสุด (โดยไม่งด/เลื่อนเข็มถัดไป เพื่อป้องกัน rebound fracture)";
+      }
+
+      /* oralBP > 4 ปี / มีปัจจัยเสี่ยง */
+      return "ผู้ป่วยได้รับ " + drugTxt + " (ใช้ยานานกว่า 4 ปี หรือมีปัจจัยเสี่ยงร่วม) และมีความจำเป็นต้องทำ " + procTxt + " (" + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์แพทย์เจ้าของไข้ประเมินความเสี่ยงกระดูกหักจากโรคกระดูกพรุน และพิจารณาความเป็นไปได้ในการหยุดยา (drug holiday) ประมาณ 2 เดือนก่อนทำหัตถการ";
+    }
+  },
+
+  /* ---------- โรคเบาหวาน (Diabetes Mellitus) ---------- */
+  dm: {
+    label: "โรคเบาหวาน (DM)",
+    HBA1C_LABELS: {
+      l1: "คุมได้ดีมาก (HbA1c ≤ 7.0% · eAG ≤ 154 mg/dL)",
+      l2: "คุมได้ปานกลาง (HbA1c 7.1–8.9% · eAG 155–211 mg/dL)",
+      l3: "คุมได้ไม่ดี (HbA1c 9.0–9.9% · eAG 212–239 mg/dL)",
+      l4: "คุมไม่ได้/วิกฤต (HbA1c ≥ 10.0% · eAG ≥ 240 mg/dL)"
+    },
+    PROC_LABEL: {
+      nonSurg: "งานทันตกรรมที่ไม่ใช่การผ่าตัด (Non-surgical)",
+      surgery: "งานศัลยกรรมช่องปาก (Oral surgery)",
+      implant: "รากฟันเทียม / ปลูกกระดูก (Implant / Bone graft)"
+    },
+    questions: [
+      PROC_QUESTION,
+      {
+        id: "hba1c",
+        label: "ระดับการควบคุมเบาหวาน (HbA1c / eAG)",
+        type: "chipChoice",
+        chipStack: true,
+        clears: ["procedure"],
+        tooltips: {
+          l1: { head: "การแปลงค่า HbA1c → eAG", body: "eAG (mg/dL) = (28.7 × HbA1c) − 46.7<br>ค่า HbA1c สะท้อนระดับน้ำตาลเฉลี่ยในช่วง 2–3 เดือนที่ผ่านมา ซึ่งบ่งบอกคุณภาพการหายของแผลและภูมิคุ้มกัน" },
+          l4: { head: "สัญญาณ Diabetic Ketoacidosis (DKA)", body: "กระหายน้ำรุนแรง · ปัสสาวะบ่อย · ผิวหนังแห้ง · <b>ลมหายใจกลิ่นผลไม้</b> · สับสน<br>หากพบ → <b>งดทำทันตกรรมทุกชนิด</b> และส่งระบบการแพทย์ฉุกเฉินทันที" }
+        },
+        options: [
+          { value: "l1", dot: "✅", text: "HbA1c ≤ 7.0%", sub: "eAG ≤ 154 mg/dL — Well controlled · ไม่มีข้อห้ามในการรักษา" },
+          { value: "l2", dot: "🟢", text: "HbA1c 7.1–8.9%", sub: "eAG 155–211 mg/dL — Moderate · ทำได้ แต่ต้องเฝ้าระวังน้ำตาลใกล้ชิด" },
+          { value: "l3", dot: "🟠", text: "HbA1c 9.0–9.9%", sub: "eAG 212–239 mg/dL — Poorly controlled · ระวังสูง ชะลองาน elective" },
+          { value: "l4", dot: "⛔", text: "HbA1c ≥ 10.0%", sub: "eAG ≥ 240 mg/dL — Severe · งดหัตถการ (เว้นช่วยชีวิต)" }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency"
+      },
+      {
+        id: "procedure",
+        label: "เลือกประเภทหัตถการ",
+        type: "chipChoice",
+        chipStack: true,
+        options: [
+          {
+            value: "nonSurg", dot: "🪥",
+            text: "งานทันตกรรมที่ไม่ใช่การผ่าตัด (Non-surgical)",
+            sub: [
+              "การตรวจ อุดฟัน และงานบูรณะเหนือขอบเหงือก",
+              "การขูดหินปูนและเกลารากฟัน (Scaling / SRP)",
+              "การรักษาคลองรากฟัน (Root canal treatment)",
+              "การพิมพ์ปาก ใส่ฟันเทียม และการปรับเครื่องมือจัดฟัน"
+            ]
+          },
+          {
+            value: "surgery", dot: "🔪",
+            text: "งานศัลยกรรมช่องปาก (Oral surgery)",
+            sub: [
+              "การถอนฟันปกติและถอนฟันผ่าตัด (Simple / Surgical extraction)",
+              "การเจาะระบายหนอง (Incision & drainage)",
+              "ศัลยกรรมปริทันต์ / การเปิดแผ่นเหงือก (Flap / Periodontal surgery)",
+              "การตัดชิ้นเนื้อ และศัลยกรรมปลายรากฟัน"
+            ]
+          },
+          {
+            value: "implant", dot: "🦴",
+            text: "รากฟันเทียม / ปลูกกระดูก (Implant / Bone graft)",
+            sub: [
+              "การผ่าตัดฝังรากฟันเทียม (Dental implant surgery)",
+              "การปลูกถ่ายกระดูก / เสริมสันกระดูก (Bone graft / augmentation)",
+              "หัตถการที่ต้องอาศัยการสร้างกระดูกใหม่ (Osseointegration)"
+            ]
+          }
+        ],
+        showIf: (a) => a.proc && a.proc !== "emergency" && !!a.hba1c && a.hba1c !== "l4"
+      }
+    ],
+    evaluate(a, ctx) {
+      const proc = ctx.proc;
+      if (!proc) return { status: null };
+
+      /* คำแนะนำร่วม */
+      const generalCare =
+        "\n\nข้อควรปฏิบัติทุกราย:\n" +
+        "• นัดช่วงเช้า (คอร์ติซอลสูง ลดโอกาสน้ำตาลต่ำ) และยืนยันว่าผู้ป่วยกินอาหารเช้า + กินยา/ฉีดอินซูลินตามปกติแล้ว\n" +
+        "• เจาะน้ำตาลปลายนิ้ว (POC glucose) ก่อนทำหัตถการ\n" +
+        "• Stress reduction protocol · ระงับความรู้สึกให้เพียงพอ\n" +
+        "• ยาชา 2% Lidocaine + Epinephrine 1:100,000 ได้ 1–2 หลอด ปลอดภัย (เลี่ยง 1:50,000 และ retraction cord ชุบ epinephrine)";
+      const hypoNote =
+        "\n\n⚠️ เฝ้าระวังน้ำตาลต่ำ (Hypoglycemia): ใจสั่น เหงื่อออก ตัวเย็น มือสั่น หิว สับสน\n" +
+        "• หากรู้สึกตัว + BG < 70 mg/dL → กฎ 15 กรัม: น้ำผลไม้ 120–180 mL หรือกลูโคสอัดเม็ด 3–4 เม็ด แล้วเจาะซ้ำใน 15 นาที\n" +
+        "• หากหมดสติ → ห้ามป้อนทางปาก · เรียก 1669 · 50% Dextrose 20–50 mL IV หรือ Glucagon 1 mg IM";
+      const surgicalCare =
+        "• เทคนิค atraumatic · ควบคุมการติดเชื้อเข้มงวด (rubber dam เมื่อเหมาะสม) · ล้างมือ/hand hygiene\n" +
+        "• พิจารณาเย็บปิดแผล และนัดติดตามการหายของแผล\n" +
+        "• จ่ายยาปฏิชีวนะแบบรักษา 5–7 วัน เฉพาะเมื่อมีแผลติดเชื้อ/แผลหายช้า (ไม่จ่ายเหวี่ยงแหในผู้ป่วยที่คุมน้ำตาลได้ดี)";
+      const apNote =
+        "\n\nยาปฏิชีวนะป้องกัน (Prophylaxis) — พิจารณาในหัตถการที่เปิดกระดูกกว้าง/คุมน้ำตาลไม่ดี:\n" +
+        "• Amoxicillin 2 g PO 1 ชม. ก่อนทำ (เด็ก 50 mg/kg)\n" +
+        "• แพ้ Penicillin: Clindamycin 600 mg PO 1 ชม. ก่อนทำ";
+
+      /* ---------- Emergency ---------- */
+      if (proc === "emergency") {
+        return {
+          status: "green",
+          title: "ให้การรักษาฉุกเฉินทันที",
+          message:
+            "ให้การรักษาฉุกเฉินได้ทันทีโดยไม่ต้องรอผล HbA1c\n" +
+            "• เจาะน้ำตาลปลายนิ้วก่อนลงมือ · ควบคุมการติดเชื้อ/ห้ามเลือด/บรรเทาปวด\n" +
+            "• จ่ายยาปฏิชีวนะเมื่อมีการติดเชื้อ · พิจารณา I&D / ถอนฟันต้นเหตุ\n" +
+            "❗ หากพบสัญญาณ DKA (กระหายน้ำมาก ปัสสาวะบ่อย ลมหายใจกลิ่นผลไม้ สับสน) → งดทันตกรรม ส่งระบบการแพทย์ฉุกเฉินทันที\n" +
+            "• หากคุมน้ำตาลไม่ได้และต้องรักษาภาวะคุกคามชีวิต ให้ทำในโรงพยาบาลที่พร้อมกู้ชีพ" +
+            hypoNote
+        };
+      }
+
+      const lv = a.hba1c;
+      if (!lv) return { status: null };
+
+      /* ---------- HbA1c ≥ 10% : งดทุกหัตถการ ---------- */
+      if (lv === "l4") {
+        return {
+          status: "red",
+          title: "งดหัตถการ — ส่งควบคุมเบาหวานก่อน (Severe uncontrolled)",
+          message:
+            "HbA1c ≥ 10.0% (eAG ≥ 240 mg/dL) — เสี่ยงสูงต่อ DKA แผลไม่หาย และการติดเชื้อลุกลาม\n" +
+            "• งดหัตถการทางทันตกรรมทุกชนิด จนกว่าจะควบคุมน้ำตาลได้\n" +
+            "• ส่งปรึกษาอายุรแพทย์/แพทย์เจ้าของไข้เพื่อควบคุมเบาหวานก่อน แล้วนัดกลับมาประเมินใหม่\n" +
+            "• หากมีการติดเชื้อรุนแรง: จ่ายยาปฏิชีวนะแบบรักษา และพิจารณาส่ง ER/Admit เพื่อรักษาร่วมกับอายุรแพทย์" +
+            hypoNote,
+          consultBody: true
+        };
+      }
+
+      if (!ctx.procedure) return { status: null };
+      const pr = ctx.procedure;
+
+      /* ---------- HbA1c ≤ 7% : Well controlled ---------- */
+      if (lv === "l1") {
+        if (pr === "nonSurg" || pr === "surgery") {
+          return {
+            status: "green",
+            title: "ให้การรักษาได้ตามปกติ",
+            message:
+              "HbA1c ≤ 7.0% — คุมได้ดีมาก ไม่มีข้อห้ามในการรักษา ทำหัตถการได้ทุกประเภทเทียบเท่าคนปกติ\n" +
+              (pr === "surgery" ? "คำแนะนำสำหรับงานศัลยกรรม:\n" + surgicalCare + "\n(ไม่จำเป็นต้องให้ยาปฏิชีวนะป้องกันในผู้ป่วยที่คุมน้ำตาลได้ดี)" : "เน้นดูแลสุขอนามัยช่องปากและควบคุมโรคปริทันต์") +
+              generalCare
+          };
+        }
+        /* implant */
+        return {
+          status: "green",
+          title: "ทำรากฟันเทียมได้ (ความเสี่ยงใกล้เคียงคนปกติ)",
+          message:
+            "HbA1c ≤ 7.0% (Good control 6–8% ตาม DGI/DGZMK) — ความเสี่ยง osseointegration ล้มเหลวใกล้เคียงประชากรทั่วไป\n" +
+            "• ผ่าตัดฝังรากเทียม/ปลูกกระดูกได้\n" +
+            surgicalCare +
+            "\n• ตรวจ POC glucose ซ้ำในวันผ่าตัด · เฝ้าระวังการหายของแผลรอบรากเทียม" +
+            generalCare
+        };
+      }
+
+      /* ---------- HbA1c 7.1–8.9% : Moderate ---------- */
+      if (lv === "l2") {
+        if (pr === "nonSurg") {
+          return {
+            status: "green",
+            title: "ให้การรักษาได้ (เฝ้าระวังน้ำตาลใกล้ชิด)",
+            message:
+              "HbA1c 7.1–8.9% — ทำงานทันตกรรมที่ไม่ใช่การผ่าตัดได้ แต่ต้องเฝ้าระวังระดับน้ำตาลใกล้ชิด หากมีอาการผิดปกติให้หยุดทันที" +
+              generalCare + hypoNote
+          };
+        }
+        if (pr === "surgery") {
+          return {
+            status: "amber",
+            title: "ทำได้อย่างระมัดระวัง + เฝ้าระวังน้ำตาล/การติดเชื้อ",
+            message:
+              "HbA1c 7.1–8.9% — ทำงานศัลยกรรมได้ โดยไม่ต้องหยุด/รอ แต่ระบบภูมิคุ้มกันและการหายของแผลด้อยลง\n" +
+              surgicalCare + apNote + generalCare + hypoNote
+          };
+        }
+        /* implant — moderate risk zone (DGI/DGZMK 8–10%) */
+        if (proc === "elective") {
+          return {
+            status: "amber",
+            title: "แนะนำ optimize น้ำตาลก่อน (Elective implant)",
+            message:
+              "HbA1c 7.1–8.9% (Moderate 8–10% ตาม DGI/DGZMK) — เสี่ยงระดับกลางถึงสูงต่อ crestal bone loss และ peri-implantitis\n" +
+              "• เป็นงาน elective — แนะนำประสานแพทย์ควบคุมน้ำตาลให้ < 8% (ยิ่งใกล้ ≤ 7% ยิ่งดี) ก่อนผ่าตัดฝังรากเทียม\n" +
+              "• หากผู้ป่วยยืนยันทำ: แจ้งความเสี่ยง ขอ informed consent · ตรวจ POC glucose วันผ่าตัด · ให้ยาปฏิชีวนะป้องกัน · นัดติดตามใกล้ชิด\n" +
+              surgicalCare + generalCare,
+            consultBody: true
+          };
+        }
+        return {
+          status: "amber",
+          title: "ทำได้อย่างระมัดระวัง (แจ้งความเสี่ยง)",
+          message:
+            "HbA1c 7.1–8.9% — เสี่ยงระดับกลางต่อการหายของกระดูกรอบรากเทียม\n" +
+            "• แจ้งความเสี่ยงและขอ informed consent · ตรวจ POC glucose วันผ่าตัด · ให้ยาปฏิชีวนะป้องกัน\n" +
+            surgicalCare + generalCare
+        };
+      }
+
+      /* ---------- HbA1c 9.0–9.9% : Poorly controlled ---------- */
+      if (lv === "l3") {
+        if (pr === "nonSurg") {
+          return {
+            status: "amber",
+            title: "ทำงานพื้นฐานได้ ระวังสูง",
+            message:
+              "HbA1c 9.0–9.9% — เข้าสู่โซนคุมไม่ดี ทำงานทันตกรรมพื้นฐาน (ไม่ผ่าตัด) ได้ แต่ต้องระวังสูงและเฝ้าระวังน้ำตาลใกล้ชิด\n" +
+              "• แนะนำให้ผู้ป่วยไปพบแพทย์เพื่อปรับการควบคุมน้ำตาล" +
+              generalCare + hypoNote
+          };
+        }
+        /* surgery / implant */
+        if (pr === "surgery") {
+          if (proc === "urgency") {
+            return {
+              status: "amber",
+              title: "เร่งด่วน — ทำได้ภายใต้การควบคุมเข้มงวด (ไม่รอ Consult)",
+              message:
+                "HbA1c 9.0–9.9% + เร่งด่วน (เช่น ติดเชื้อ/ปวดรุนแรง) — ให้การรักษาแบบประคับประคอง/ถอนฟัน/ระบายหนองได้\n" +
+                surgicalCare +
+                "\n• จ่ายยาปฏิชีวนะแบบรักษา · ควบคุมการติดเชื้ออย่างเข้มงวด\n" +
+                "• ประสาน/ส่งปรึกษาแพทย์เจ้าของไข้อย่างทันท่วงที" +
+                apNote + generalCare + hypoNote,
+              consultBody: true
+            };
+          }
+          return {
+            status: "red",
+            title: "ชะลองาน Elective — ส่งควบคุมน้ำตาลก่อน",
+            message:
+              "HbA1c 9.0–9.9% — งานศัลยกรรมแบบนัดหมาย (โดยเฉพาะการเปิดแผ่นเหงือก/กระดูกปริทันต์) ควรชะลอไว้ก่อน\n" +
+              "• ส่งปรึกษาแพทย์เพื่อควบคุมน้ำตาล แล้วนัดทำหัตถการใหม่เมื่อ HbA1c ดีขึ้น",
+            consultBody: true
+          };
+        }
+        /* implant — poorly controlled */
+        return {
+          status: "red",
+          title: "เลื่อนการฝังรากเทียม — ควบคุมน้ำตาลก่อน",
+          message:
+            "HbA1c 9.0–9.9% — ไม่แนะนำผ่าตัดฝังรากเทียม/ปลูกกระดูกในภาวะนี้ (osseointegration ล้มเหลวสูง)\n" +
+            "• เลื่อนหัตถการออกไป · ส่งปรึกษาแพทย์เพื่อควบคุมน้ำตาลให้ < 8% (ควรใกล้ ≤ 7%) ก่อนวางแผนฝังรากเทียม",
+          consultBody: true
+        };
+      }
+
+      return { status: null };
+    },
+    buildConsult(a, ctx) {
+      const lvTxt = this.HBA1C_LABELS[a.hba1c] || "";
+      const prTxt = (a.procedure && this.PROC_LABEL[a.procedure]) ? this.PROC_LABEL[a.procedure] : "หัตถการทางทันตกรรม";
+      if (a.hba1c === "l4") {
+        return "ผู้ป่วยโรคเบาหวานที่ควบคุมน้ำตาลไม่ได้ " + lvTxt + " ทางกลุ่มงานทันตกรรมของดการทำหัตถการไว้ก่อน และขอความอนุเคราะห์อายุรแพทย์/แพทย์เจ้าของไข้ประเมินและควบคุมระดับน้ำตาลให้อยู่ในเกณฑ์ปลอดภัยก่อนนัดผู้ป่วยกลับมารับการรักษาทางทันตกรรม";
+      }
+      return "ผู้ป่วยโรคเบาหวาน " + lvTxt + " มีความจำเป็นต้องทำ " + prTxt + " (ประเภทหัตถการ: " + PROC_LABELS[ctx.proc] + ") ทางกลุ่มงานทันตกรรมขอความอนุเคราะห์อายุรแพทย์/แพทย์เจ้าของไข้ประเมินและปรับการควบคุมระดับน้ำตาลในเลือดก่อนทำหัตถการ เพื่อลดความเสี่ยงต่อการติดเชื้อและภาวะแผลหายช้า";
     }
   }
 };
