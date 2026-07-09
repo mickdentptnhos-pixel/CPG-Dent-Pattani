@@ -1,123 +1,86 @@
 /* ===================== State & DOM ===================== */
-const state = { proc: "", procedure: "", problem: "", answers: {} };
-let pendingFocus = null; 
+const state = { problem: "", answers: {} };
+let pendingFocus = null;
 const el = (id) => document.getElementById(id);
 
-const currentProcedures = () => (PROBLEMS[state.problem]?.procedures) || DEFAULT_PROCEDURES;
-const getProcedureLabel = (val) => currentProcedures().find(p => p.value === val)?.label || "-";
+const currentProblem = () => PROBLEMS[state.problem];
+const findQuestion = (id) => currentProblem()?.questions.find(q => q.id === id);
+const optionLabel = (qid, val) => findQuestion(qid)?.options?.find(o => o.value === val)?.text || "-";
 
-const updateActiveChip = (containerId, activeVal, dataKey) => {
-  el(containerId).querySelectorAll('.chip').forEach(c => {
-    c.classList.toggle('active', c.dataset[dataKey] === activeVal);
-  });
-};
+/* ctx สำหรับ evaluate / buildConsult / showIf — สร้างจากคำตอบล้วนๆ */
+const buildCtx = () => ({
+  proc: state.answers.proc,
+  procedure: state.answers.procedure,
+  procedureLabel: optionLabel("procedure", state.answers.procedure)
+});
 
-/* ===================== Event Listeners ===================== */
+/* ===================== เลือก Problem ===================== */
 el("problemChips").addEventListener("click", (e) => {
   const chip = e.target.closest(".chip");
   if (!chip) return;
-  if (state.problem !== chip.dataset.problem) {
-    state.proc = ""; state.procedure = ""; state.answers = {};
-    updateActiveChip("procChips", "", "proc");
-  }
+  if (state.problem !== chip.dataset.problem) state.answers = {};
   state.problem = chip.dataset.problem;
-  updateActiveChip("problemChips", state.problem, "problem");
-  updateFlow();
+  el("problemChips").querySelectorAll(".chip").forEach(c => {
+    c.classList.toggle("active", c.dataset.problem === state.problem);
+  });
+  renderQuestions();
 });
 
-el("procChips").addEventListener("click", (e) => {
-  const chip = e.target.closest(".chip");
-  if (!chip) return;
-  state.proc = chip.dataset.proc; state.procedure = "";
-  updateActiveChip("procChips", state.proc, "proc");
-  updateFlow();
+/* ===================== ตอบคำถาม (event delegation) ===================== */
+el("questionsArea").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-q]");
+  if (!btn) return;
+  const q = findQuestion(btn.dataset.q);
+  if (!q) return;
+  if (q.clears === "*") state.answers = {};
+  else if (q.clears) q.clears.forEach(k => delete state.answers[k]);
+  state.answers[q.id] = btn.dataset.val;
+  renderQuestions();
 });
 
-el("procedureChips").addEventListener("click", (e) => {
-  const chip = e.target.closest(".chip");
-  if (!chip) return;
-  state.procedure = chip.dataset.procedure;
-  updateActiveChip("procedureChips", state.procedure, "procedure");
-  updateFlow();
+el("questionsArea").addEventListener("input", (e) => {
+  const inp = e.target.closest("input[data-q]");
+  if (!inp) return;
+  state.answers[inp.dataset.q] = inp.value;
+  pendingFocus = inp.dataset.q;
+  renderQuestions();
 });
 
-/* ===================== ควบคุม Flow ===================== */
-function updateFlow() {
-  el("procCard").style.display = state.problem ? "block" : "none";
-  
-  if (!state.problem || !state.proc) {
-    el("procedureCard").style.display = "none";
-    el("decisionCard").style.display = "none";
+/* ===================== Render คำถามทั้งหมดของ Problem ===================== */
+function renderQuestions() {
+  const p = currentProblem();
+  if (!p) {
+    el("questionsArea").innerHTML = "";
     el("resultCard").style.display = "none";
+    el("patientCard").style.display = "none";
     return;
   }
+  const ctx = buildCtx();
 
-  if (state.proc === "emergency" || state.problem === "ht") {
-    el("procedureCard").style.display = "none";
-    renderDecision();
-    return;
-  }
+  el("questionsArea").innerHTML = p.questions.map(q => {
+    if (q.showIf && !q.showIf(state.answers, ctx)) return "";
 
-  el("procedureChips").innerHTML = currentProcedures().map(proc => `
-    <button class="chip ${state.procedure === proc.value ? 'active' : ''}" type="button" data-procedure="${proc.value}">
-      ${proc.dot ? `<span class="dot">${proc.dot}</span>` : ''}
-      <span>${proc.label} ${proc.sub ? (Array.isArray(proc.sub) ? `<ul class="sub-list"><li>${proc.sub.join('</li><li>')}</li></ul>` : `<span class="sub">${proc.sub}</span>`) : ''}</span>
-    </button>
-  `).join('');
-  
-  el("procedureCard").style.display = "block";
-  state.procedure ? renderDecision() : (el("decisionCard").style.display = "none", el("resultCard").style.display = "none");
-}
-
-/* ===================== Render Decision ===================== */
-window.handleAnswer = (id, val, clears) => {
-  state.answers[id] = val;
-  if (clears) clears.split(',').forEach(k => delete state.answers[k]);
-  renderDecision();
-};
-
-window.handleInput = (id, val) => {
-  state.answers[id] = val;
-  pendingFocus = id;
-  renderDecision();
-};
-
-function renderDecision() {
-  const p = PROBLEMS[state.problem];
-  if (!p) { evaluate(); return; }
-  const ctx = { proc: state.proc, procedure: state.procedure, procedureLabel: getProcedureLabel(state.procedure) };
-
-  let html = '';
-  p.questions.forEach(q => {
-    if (q.showIf && !q.showIf(state.answers, ctx)) return;
-    
-    html += `<div class="sub-block"><div class="q-label">${q.label}</div>`;
-    
+    let body = "";
     if (q.type === "chipChoice" || q.type === "choice") {
       const isChip = q.type === "chipChoice";
-      const wrapCls = isChip ? `chips ${q.chipStack ? 'stack' : ''}` : 'choices';
-      const btnCls = isChip ? 'chip' : 'choice';
-
-      html += `<div class="${wrapCls}">` + q.options.map(opt => `
-        <button type="button" class="${btnCls} ${state.answers[q.id] === opt.value ? 'active' : ''}" 
-                onclick="handleAnswer('${q.id}', '${opt.value}', '${q.clears ? q.clears.join(',') : ''}')">
-          <span>${opt.text} 
-            ${opt.sub ? (Array.isArray(opt.sub) ? `<ul class="sub-list"><li>${opt.sub.join('</li><li>')}</li></ul>` : `<span class="sub">${opt.sub}</span>`) : ''}
+      const wrapCls = isChip ? `chips ${q.chipStack ? "stack" : ""}` : "choices";
+      const btnCls = isChip ? "chip" : "choice";
+      body = `<div class="${wrapCls}">` + q.options.map(opt => `
+        <button type="button" class="${btnCls} ${state.answers[q.id] === opt.value ? "active" : ""}" data-q="${q.id}" data-val="${opt.value}">
+          ${opt.dot ? `<span class="dot">${opt.dot}</span>` : ""}
+          <span>${opt.text}
+            ${opt.sub ? (Array.isArray(opt.sub) ? `<ul class="sub-list"><li>${opt.sub.join("</li><li>")}</li></ul>` : `<span class="sub">${opt.sub}</span>`) : ""}
           </span>
-        </button>
-      `).join('') + `</div>`;
-      
+        </button>`).join("") + `</div>`;
     } else if (q.type === "number") {
-      html += `<div class="inline-input">
-        <input type="number" id="q_${q.id}" step="any" placeholder="${q.placeholder || ''}" 
-               value="${state.answers[q.id] || ''}" oninput="handleInput('${q.id}', this.value)">
+      body = `<div class="inline-input">
+        <input type="number" data-q="${q.id}" id="q_${q.id}" step="any" placeholder="${q.placeholder || ""}" value="${state.answers[q.id] || ""}">
       </div>`;
     }
-    html += `</div>`;
-  });
 
-  el("decisionArea").innerHTML = html;
-  el("decisionCard").style.display = html ? "block" : "none";
+    return `<section class="card"><h2>${q.label.replace(/\n/g, "<br>")}</h2>${body}</section>`;
+  }).join("");
+
   evaluate();
 
   if (pendingFocus) {
@@ -129,14 +92,13 @@ function renderDecision() {
 
 /* ===================== Evaluate & Print ===================== */
 function evaluate() {
-  const p = PROBLEMS[state.problem];
+  const p = currentProblem();
   el("resultBox").className = "result";
   el("resultCard").style.display = "none";
   el("patientCard").style.display = "none";
 
   if (!p) return;
-  const ctx = { proc: state.proc, procedure: state.procedure, procedureLabel: getProcedureLabel(state.procedure) };
-  const r = p.evaluate(state.answers, ctx);
+  const r = p.evaluate(state.answers, buildCtx());
   if (!r || !r.status) return;
 
   const icons = { green: "✅", red: "⛔", amber: "⚠️" };
@@ -159,14 +121,13 @@ el("printBtn").onclick = () => {
   el("dAge").textContent  = el("ptAge").value.trim()  || "____";
   el("dHN").textContent   = el("ptHN").value.trim()   || "____________";
   el("dDate").textContent = formatThaiDate(new Date());
-  el("dProc").textContent = PROC_LABELS[state.proc] || "-";
-  
-  const p = PROBLEMS[state.problem];
-  const htProcLabel = (state.problem === "ht" && state.answers.htProcedure) ? p.HT_PROC_LABEL[state.answers.htProcedure] : null;
-  el("dProcedure").textContent = htProcLabel || getProcedureLabel(state.procedure) || "-";
+  el("dProc").textContent = PROC_LABELS[state.answers.proc] || "-";
 
-  const ctx = { proc: state.proc, procedure: state.procedure, procedureLabel: getProcedureLabel(state.procedure) };
-  el("dConsultBody").textContent = p.buildConsult(state.answers, ctx);
+  const p = currentProblem();
+  const htProcLabel = (state.problem === "ht" && state.answers.htProcedure) ? p.HT_PROC_LABEL[state.answers.htProcedure] : null;
+  el("dProcedure").textContent = htProcLabel || (state.answers.procedure ? optionLabel("procedure", state.answers.procedure) : "-");
+
+  el("dConsultBody").textContent = p.buildConsult(state.answers, buildCtx());
 
   el("app").style.display = "none";
   el("consultDoc").style.display = "block";
@@ -179,32 +140,12 @@ el("backBtn").onclick = () => {
 };
 el("doPrintBtn").onclick = () => window.print();
 
-/* ===================== Proc Tooltips ===================== */
-const PROC_TOOLTIPS = {
-  emergency: {
-    head: "Emergency (ฉุกเฉิน)",
-    body: `ภาวะเจ็บป่วยที่อาจก่อให้เกิดอันตรายต่อชีวิต และจำเป็นต้องได้รับการรักษาอย่างทันท่วงที ได้แก่:<ul>
-      <li>เลือดออกภายในช่องปากที่ควบคุมไม่ได้</li>
-      <li>การอักเสบติดเชื้อที่ทำให้เนื้อเยื่ออ่อนภายในหรือภายนอกช่องปากบวม จนอาจเป็นอันตรายต่อชีวิต</li>
-      <li>อุบัติเหตุบริเวณใบหน้าที่อาจขัดขวางการหายใจ</li>
-    </ul>`
-  },
-  urgency: {
-    head: "Urgency (เร่งด่วน)",
-    body: `คือภาวะเจ็บป่วยที่ควรได้รับการรักษาโดยไม่ล่าช้า เช่น:<ul>
-      <li><b>อาการปวด:</b> ปวดฟัน, ปวดฟันคุด หรือปวดจากกระดูกเบ้าฟันอักเสบภายหลังถอนฟัน</li>
-      <li><b>การติดเชื้อ:</b> การมีหนองภายในหรือภายนอกช่องปาก</li>
-      <li><b>อุบัติเหตุเกี่ยวกับฟัน:</b> ฟันหัก, ฟันหลุด หรือฟันเคลื่อนจากอุบัติเหตุ</li>
-      <li><b>ปัญหาจากงานที่อยู่ระหว่างรักษา:</b> วัสดุอุดฟันชั่วคราวหลุดระหว่างรักษาคลองรากฟัน, ครอบฟันชั่วคราวหลุด, ฟันเทียมหักหรือทำให้เจ็บ, อุปกรณ์จัดฟันผิดปกติจนเนื้อเยื่ออ่อนบาดเจ็บ</li>
-      <li><b>การเตรียมช่องปากก่อนรักษาทางการแพทย์ที่รอไม่ได้:</b> เช่น ก่อนรักษามะเร็งศีรษะและลำคอ, การผ่าตัดเปลี่ยนอวัยวะ หรือการปลูกถ่ายไขกระดูก</li>
-    </ul>`
-  }
-};
-
-(function setupProcTooltips() {
+/* ===================== Tooltips (จาก q.tooltips ใน guidelines.js) ===================== */
+(function setupTooltips() {
   const tooltip = el("procTooltip");
   const ttHead = tooltip.querySelector(".tt-head");
   const ttBody = tooltip.querySelector(".tt-body");
+  const area = el("questionsArea");
 
   function positionTooltip(mx, my) {
     const ox = 14, oy = 14;
@@ -217,16 +158,17 @@ const PROC_TOOLTIPS = {
     });
   }
 
-  el("procChips").querySelectorAll(".chip").forEach(chip => {
-    const data = PROC_TOOLTIPS[chip.dataset.proc];
-    if (!data) return;
-    chip.addEventListener("mouseenter", (e) => {
-      ttHead.textContent = data.head;
-      ttBody.innerHTML = data.body;
-      tooltip.classList.add("show");
-      positionTooltip(e.clientX, e.clientY);
-    });
-    chip.addEventListener("mousemove", (e) => positionTooltip(e.clientX, e.clientY));
-    chip.addEventListener("mouseleave", () => tooltip.classList.remove("show"));
+  area.addEventListener("mouseover", (e) => {
+    const btn = e.target.closest("button[data-q]");
+    const data = btn && findQuestion(btn.dataset.q)?.tooltips?.[btn.dataset.val];
+    if (!data) { tooltip.classList.remove("show"); return; }
+    ttHead.textContent = data.head;
+    ttBody.innerHTML = data.body;
+    tooltip.classList.add("show");
+    positionTooltip(e.clientX, e.clientY);
   });
+  area.addEventListener("mousemove", (e) => {
+    if (tooltip.classList.contains("show")) positionTooltip(e.clientX, e.clientY);
+  });
+  area.addEventListener("mouseleave", () => tooltip.classList.remove("show"));
 })();
